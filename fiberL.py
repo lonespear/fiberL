@@ -967,7 +967,7 @@ class fiberL:
                 lines = ["FIBER LENGTH ANALYSIS REPORT", "-"*40, "📌 Parameter Settings:"]
                 lines += [f"{k}: {v}" for k, v in settings.items()]
                 lines += ["\n📊 Summary Statistics:"]
-                lines += [f"{k}: {v:.2f}" for k, v in self.stats.items()]
+                lines += [f"{k}: {['{:.2f}'.format(x) if x is not None else 'None' for x in v]}" for k, v in self.stats.items()]
 
                 ax2.axis("off")
                 ax2.text(0.01, 0.99, "\n".join(lines), fontsize=11, va="top")
