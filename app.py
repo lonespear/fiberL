@@ -102,6 +102,9 @@ if uploaded_file:
                 st.subheader("📊 Fiber Length Histogram")
                 st.pyplot(analyzer.fig)
 
+                st.subheader("📊 Summary Statistics")
+                st.dataframe(analyzer.stats_df.style.format({"Value": "{:.2f}"}))
+
                 with st.expander("📤 Export Results"):
                     analyzer.export_results_streamlit()
                     st.success("Results exported to fiberL_output folder!")

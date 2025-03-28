@@ -9,3 +9,5 @@ seaborn
 scikit-learn
 scipy
 stqdm
+prettytable
+pandas

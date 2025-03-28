@@ -1,23 +1,25 @@
+import os
 import cv2
+import time
 import numpy as np
-from skimage import morphology
+import pandas as pd
+import random
+import tempfile
+import itertools
+from datetime import datetime
 import matplotlib.pyplot as plt
 from matplotlib import cm  # For colormap
 from matplotlib.colors import Normalize
-import itertools
-import urllib.request
-from seaborn import boxplot, histplot, despine
+from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.figure import Figure
 import matplotlib.gridspec as gridspec
+from seaborn import boxplot, histplot, despine
 from sklearn.decomposition import PCA
 from scipy.spatial import distance, KDTree
-from stqdm import stqdm
-import time
-import random
-from matplotlib.backends.backend_pdf import PdfPages
-from datetime import datetime
-import os
+from scipy.optimize import curve_fit
+from skimage import morphology
 import streamlit as st
-import tempfile
+from stqdm import stqdm
 
 def anisotropic_diffusion(img, niter=1, kappa=50, gamma=0.1, voxelspacing=None, option=1):
     r"""
@@ -335,6 +337,39 @@ def pca_curvature_score(points):
     pca = PCA(n_components=2)
     pca.fit(points)
     return pca.explained_variance_ratio_[0]  # how much variance is in the primary direction
+
+def unit_tangent_vectors(coords):
+    diffs = np.diff(coords, axis=0)
+    norms = np.linalg.norm(diffs, axis=1, keepdims=True)
+    return diffs / norms
+
+def tangent_correlation(tangents, max_lag):
+    corrs = []
+    for lag in range(1, max_lag + 1):
+        dots = [
+            np.dot(tangents[i], tangents[i + lag])
+            for i in range(len(tangents) - lag)
+        ]
+        corrs.append(np.mean(dots))
+    return np.array(corrs)
+
+def exp_decay(s, Lp):
+    return np.exp(-s / Lp)
+
+def estimate_persistence_length(coords):
+    coords = np.array(coords)
+    tangents = unit_tangent_vectors(coords)
+    max_lag = min(20, len(tangents) - 1)
+    corrs = tangent_correlation(tangents, max_lag)
+    
+    # Compute contour distances
+    step_sizes = np.linalg.norm(np.diff(coords, axis=0), axis=1)
+    avg_step = np.mean(step_sizes)
+    s_vals = np.arange(1, max_lag + 1) * avg_step
+
+    # Fit exponential
+    popt, _ = curve_fit(exp_decay, s_vals, corrs, p0=[avg_step * 5])
+    return popt[0]  # Lp
 
 class fiberL:
     def __init__(self, image, niter=50, kappa=50, gamma=0.2, thresh_1 = 126, g_blur = 9, thresh_2 = 15, 
@@ -690,6 +725,16 @@ class fiberL:
             np.degrees(np.arctan2(*PCA(n_components=1).fit(edge.reshape(-1, 2)).components_[0][::-1])) % 180
             if len(edge) >= 2 else np.nan for edge in self.edges
         ]
+        self.pers_lengths = [estimate_persistence_length(edge) for edge in self.edges]
+
+        self.stats = {
+                    "Mean": [np.mean(self.arc_lengths), np.mean(self.angles), np.mean(self.pers_lengths)],
+                    "Minimum": [np.min(self.arc_lengths), np.min(self.angles), np.min(self.pers_lengths)],
+                    "Maximum": [np.max(self.arc_lengths), np.max(self.angles), np.max(self.pers_lengths)],
+                    "SD": [np.std(self.arc_lengths), np.std(self.angles), np.std(self.pers_lengths)],
+                    "n": [len(self.arc_lengths), len(self.angles), len(self.pers_lengths)],
+                }
+        pd.DataFrame(self.stats.items(), columns=["Statistic", "Fiber Length", "Direction", "Persistent Length"])
 
         norm = Normalize(vmin=min(self.arc_lengths), vmax=max(self.arc_lengths))
         colormap = cm.plasma
@@ -866,13 +911,6 @@ class fiberL:
         """
         Streamlit-compatible export: allows user to download images, CSV, and PDF via download buttons.
         """
-        import os
-        import numpy as np
-        import cv2
-        from datetime import datetime
-        from matplotlib.backends.backend_pdf import PdfPages
-        from matplotlib.figure import Figure
-
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         base_name = f"fiberL_{timestamp}"
 
@@ -897,15 +935,7 @@ class fiberL:
 
                 fig2 = Figure(figsize=(8.5, 11))
                 ax2 = fig2.subplots()
-
-                stats = {
-                    "Average length": np.mean(self.arc_lengths),
-                    "Minimum length": np.min(self.arc_lengths),
-                    "Maximum length": np.max(self.arc_lengths),
-                    "Standard deviation": np.std(self.arc_lengths),
-                    "Number of fibers": len(self.arc_lengths),
-                }
-
+              
                 settings = {
                     "Preprocessing": f"Anisotropic diffusion (niter={self.niter}, kappa={self.kappa}, gamma={self.gamma})",
                     "Thresholds": f"Binary={self.thresh_1}, Final={self.thresh_2}",
@@ -917,7 +947,7 @@ class fiberL:
                 lines = ["FIBER LENGTH ANALYSIS REPORT", "-"*40, "📌 Parameter Settings:"]
                 lines += [f"{k}: {v}" for k, v in settings.items()]
                 lines += ["\n📊 Summary Statistics:"]
-                lines += [f"{k}: {v:.2f}" for k, v in stats.items()]
+                lines += [f"{k}: {v:.2f}" for k, v in self.stats.items()]
 
                 ax2.axis("off")
                 ax2.text(0.01, 0.99, "\n".join(lines), fontsize=11, va="top")
