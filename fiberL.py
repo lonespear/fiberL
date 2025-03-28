@@ -387,6 +387,22 @@ def estimate_persistence_length(coords):
     except Exception:
         return np.nan
 
+def mst_sort(points):
+    points = np.unique(points, axis=0)
+    if len(points) < 2:
+        return points
+
+    G = nx.Graph()
+    for i, pt1 in enumerate(points):
+        for j, pt2 in enumerate(points):
+            if i < j:
+                dist = np.linalg.norm(pt1 - pt2)
+                G.add_edge(i, j, weight=dist)
+
+    mst = nx.minimum_spanning_tree(G)
+    path = list(nx.dfs_preorder_nodes(mst, source=0))  # or use longest path?
+    return points[path]
+
 class fiberL:
     def __init__(self, image, niter=50, kappa=50, gamma=0.2, thresh_1 = 126, g_blur = 9, thresh_2 = 15, 
                  ksize = 5, min_prune = 5, max_node_dist=15, tip_distance_thresh = 25, cos_thresh = 0.85, curvature_thresh = 0.85):
@@ -727,7 +743,8 @@ class fiberL:
             if edge_idx not in paired_edges:
                 merged_edges.append(self.edges[edge_idx])
 
-        self.edges = merged_edges
+        self.edges = [mst_sort(edge).reshape(-1,1,2) if edge.shape[0] >= 2 else edge.reshape(-1,1,2)
+                      for edge in stqdm(merged_edges, total=len(merged_edges), desc="Sorting final list of edges...")]
         print(f"✅ Tip-to-tip merging done in {time.time() - start:.2f}s — final edge count: {len(self.edges)}")
 
     def viz_and_sum(self, thickness=2, mode="rand", text=False):
