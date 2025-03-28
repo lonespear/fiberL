@@ -1,0 +1,11 @@
+streamlit
+opencv-python
+numpy
+Pillow
+streamlit-cropper
+scikit-image
+matplotlib
+seaborn
+scikit-learn
+scipy
+stqdm
