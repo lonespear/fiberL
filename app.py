@@ -71,9 +71,9 @@ if uploaded_file:
 
         col1, col2 = st.columns(2)
         with col1:
-            st.image(cropped_img, caption="Cropped Original Image", use_column_width=True)
+            st.image(cropped_img, caption="Cropped Original Image", use_container_width=True)
         with col2:
-            st.image(analyzer.sk_image * 255, caption="Skeletonized Image", use_column_width=True, clamp=True)
+            st.image(analyzer.sk_image * 255, caption="Skeletonized Image", use_container_width=True, clamp=True)
 
         if st.button("🚀 Run Full Fiber Length Analysis"):
             with st.spinner("Processing image... This may take a moment..."):
@@ -81,7 +81,7 @@ if uploaded_file:
                 st.success("✅ Analysis Complete!")
 
                 st.subheader("🎨 Final Colored Edge Network")
-                st.image(analyzer.color_image, channels="RGB", use_column_width=True)
+                st.image(analyzer.color_image, channels="RGB", use_container_width=True)
 
                 st.subheader("📊 Fiber Length Histogram")
                 st.pyplot(analyzer.fig)
