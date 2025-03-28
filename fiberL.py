@@ -750,7 +750,11 @@ class fiberL:
                     "SD": [np.std(self.arc_lengths), np.std(self.angles), np.std(self.pers_lengths)],
                     "n": [len(self.arc_lengths), len(self.angles), len(self.pers_lengths)],
                 }
-        self.stats_df = pd.DataFrame(self.stats.items(), columns=["Statistic", "Fiber Length", "Direction", "Persistent Length"])
+        self.stats_df = pd.DataFrame.from_dict(
+            self.stats,
+            orient="index",
+            columns=["Fiber Length", "Direction", "Persistent Length"]
+        ).reset_index().rename(columns={"index": "Statistic"})
 
         norm = Normalize(vmin=min(self.arc_lengths), vmax=max(self.arc_lengths))
         colormap = cm.plasma
