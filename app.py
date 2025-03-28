@@ -42,12 +42,12 @@ if uploaded_file:
     if st.session_state.cropped_img is None:
         st.subheader("🖼️ Crop Region of Interest")
         W, H = img_pil.size
-        default_coords = {
-            "x": int(W * 0.05),
-            "y": int(H * 0.05),
-            "width": int(W * 0.9),
-            "height": int(H * 0.9)
-        }
+        default_coords = (
+            int(W * 0.05),  # left
+            int(H * 0.05),  # top
+            int(W * 0.9),   # width
+            int(H * 0.9)    # height
+        )
         
         rect = st_cropper(
             img_pil,
