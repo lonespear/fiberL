@@ -479,7 +479,7 @@ class fiberL:
             raise ValueError("Branch points are not shaped correctly. Expected Nx2.")
 
         # For each edge (which is (M, 2)), use broadcasting
-        for edge_index, edge_points in enumerate(self.edge_points_list):
+        for edge_index, edge_points in stqdm(enumerate(self.edge_points_list), total=len(self.edge_points_list), desc="Finding fiber associations about intersections: "):
             edge_points = np.array(edge_points)
             if edge_points.ndim == 1:
                 # This handles flat arrays like [x0, y0, x1, y1, ...]
@@ -636,7 +636,7 @@ class fiberL:
         paired_edges = set()
         merged_edges = []
 
-        for i, (tip1, edge1, pos1) in enumerate(tip_to_edge):
+        for i, (tip1, edge1, pos1) in stqdm(enumerate(tip_to_edge), total=len(tip_to_edge), desc="Mending Fibers on Tip Logic"):
             if i in used:
                 continue
 
