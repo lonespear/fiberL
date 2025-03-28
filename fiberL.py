@@ -358,18 +358,34 @@ def exp_decay(s, Lp):
 
 def estimate_persistence_length(coords):
     coords = np.array(coords)
+
+    if coords.ndim != 2 or coords.shape[0] < 3:
+        # Too short or not 2D: return np.nan or 0
+        return np.nan
+
     tangents = unit_tangent_vectors(coords)
+    if len(tangents) < 2:
+        return np.nan
+
     max_lag = min(20, len(tangents) - 1)
+    if max_lag < 1:
+        return np.nan
+
     corrs = tangent_correlation(tangents, max_lag)
-    
+
+    if np.any(np.isnan(corrs)) or np.all(corrs == 0):
+        return np.nan
+
     # Compute contour distances
     step_sizes = np.linalg.norm(np.diff(coords, axis=0), axis=1)
     avg_step = np.mean(step_sizes)
     s_vals = np.arange(1, max_lag + 1) * avg_step
 
-    # Fit exponential
-    popt, _ = curve_fit(exp_decay, s_vals, corrs, p0=[avg_step * 5])
-    return popt[0]  # Lp
+    try:
+        popt, _ = curve_fit(exp_decay, s_vals, corrs, p0=[avg_step * 5])
+        return popt[0]  # Lp
+    except Exception:
+        return np.nan
 
 class fiberL:
     def __init__(self, image, niter=50, kappa=50, gamma=0.2, thresh_1 = 126, g_blur = 9, thresh_2 = 15, 
@@ -734,7 +750,7 @@ class fiberL:
                     "SD": [np.std(self.arc_lengths), np.std(self.angles), np.std(self.pers_lengths)],
                     "n": [len(self.arc_lengths), len(self.angles), len(self.pers_lengths)],
                 }
-        pd.DataFrame(self.stats.items(), columns=["Statistic", "Fiber Length", "Direction", "Persistent Length"])
+        self.stats_df = pd.DataFrame(self.stats.items(), columns=["Statistic", "Fiber Length", "Direction", "Persistent Length"])
 
         norm = Normalize(vmin=min(self.arc_lengths), vmax=max(self.arc_lengths))
         colormap = cm.plasma
