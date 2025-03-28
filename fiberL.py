@@ -7,6 +7,7 @@ import random
 import tempfile
 import itertools
 from datetime import datetime
+import networkx as nx
 import matplotlib.pyplot as plt
 from matplotlib import cm  # For colormap
 from matplotlib.colors import Normalize
