@@ -41,7 +41,21 @@ if uploaded_file:
 
     if st.session_state.cropped_img is None:
         st.subheader("🖼️ Crop Region of Interest")
-        rect = st_cropper(img_pil, realtime_update=True, box_color='#FF4B4B', aspect_ratio=None)
+        W, H = img_pil.size
+        default_coords = {
+            "x": int(W * 0.05),
+            "y": int(H * 0.05),
+            "width": int(W * 0.9),
+            "height": int(H * 0.9)
+        }
+        
+        rect = st_cropper(
+            img_pil,
+            realtime_update=True,
+            box_color='#FF4B4B',
+            aspect_ratio=None,
+            default_coords=default_coords
+        )
         cropped_img = np.array(rect)
 
         if st.button("📸 Confirm Crop"):
