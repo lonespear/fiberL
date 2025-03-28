@@ -12,10 +12,26 @@ st.set_page_config(page_title="Fiber Length Analysis", layout="wide")
 st.title("🧪 Fiber Length Analysis using fiberL")
 
 st.sidebar.header("📸 Upload SEM Image")
-uploaded_file = st.sidebar.file_uploader("Choose an image file", type=['png', 'jpg', 'jpeg', 'tif', 'tiff'])
-
+# --- Image Upload + Session State ---
+if 'uploaded_file' not in st.session_state:
+    st.session_state.uploaded_file = None
 if 'cropped_img' not in st.session_state:
     st.session_state.cropped_img = None
+
+new_file = st.sidebar.file_uploader("Choose an image file", type=['png', 'jpg', 'jpeg', 'tif', 'tiff'])
+
+# Reset session if user removes image
+if new_file is None and st.session_state.uploaded_file is not None:
+    st.session_state.uploaded_file = None
+    st.session_state.cropped_img = None
+    st.rerun()
+
+# If user uploads a new file
+if new_file is not None:
+    st.session_state.uploaded_file = new_file
+    uploaded_file = new_file
+else:
+    uploaded_file = None
 
 if uploaded_file:
     file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
