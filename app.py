@@ -39,7 +39,7 @@ if uploaded_file:
     img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img_pil = Image.fromarray(img_rgb)
-    img_pil.format = "PNG"  # Set format manually so st_canvas doesn't crash
+    img_pil.format = "TIFF"  # Set format manually so st_canvas doesn't crash
 
 
     st.sidebar.subheader("📐 Scale Units")
