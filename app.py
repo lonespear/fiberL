@@ -4,6 +4,7 @@ import numpy as np
 from PIL import Image
 from streamlit_cropper import st_cropper
 from streamlit_drawable_canvas import st_canvas
+st.write(f"✅ Canvas is from: {st_canvas.__file__}")
 from fiberL import fiberL  # Ensure your fiberL code is saved as 'fiberL_module.py'
 import tempfile
 import shutil
@@ -64,17 +65,27 @@ if uploaded_file:
 
     if scale_canvas.json_data is not None:
         objs = scale_canvas.json_data.get("objects", [])
-        if objs and objs[0].get("type") == "line":
+
+        if objs:
             line = objs[0]
-            if all(k in line for k in ["x", "y", "width", "height"]):
+            if line.get("type") == "line" and all(k in line for k in ["x", "y", "width", "height"]):
                 x1, y1 = line["x"], line["y"]
                 x2, y2 = x1 + line["width"], y1 + line["height"]
                 pixel_distance = np.linalg.norm([x2 - x1, y2 - y1])
                 st.write(f"🧮 Pixel Length: `{pixel_distance:.2f}`")
+
+                real_length = st.number_input(
+                    f"Enter the real-world length of the scale bar (in {selected_unit})",
+                    min_value=0.0001
+                )
+                if real_length:
+                    pixels_per_unit = pixel_distance / real_length
+                    st.session_state["pixels_per_unit"] = pixels_per_unit
+                    st.session_state["unit_label"] = selected_unit
             else:
-                st.warning("✏️ Please draw a **line** using the tool above.")
+                st.warning("⚠️ Please draw a valid line using the measurement tool.")
         else:
-            st.info("👈 Draw a line to measure the pixel length of the scale bar.")
+            st.info("👈 No objects detected. Try drawing a line on the canvas.")
 
         real_length = st.number_input(f"Enter the real-world length of the scale bar (in {selected_unit})", min_value=0.0001)
         if real_length:
