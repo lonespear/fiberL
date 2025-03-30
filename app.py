@@ -38,8 +38,10 @@ if uploaded_file:
     file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
     img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    img_pil = Image.fromarray(img_rgb)
-    img_pil.format = "TIFF"  # Set format manually so st_canvas doesn't crash
+    # Save and reopen to make sure .format is properly set
+    with tempfile.NamedTemporaryFile(suffix=".tiff", delete=False) as tmp:
+        Image.fromarray(img_rgb).save(tmp.name, format="TIFF")
+        img_pil = Image.open(tmp.name)
 
 
     st.sidebar.subheader("📐 Scale Units")
