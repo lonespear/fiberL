@@ -541,7 +541,9 @@ class fiberL:
         intersection_associations = {}
         # Precompute once: stack all branch points into a (N, 2) array
         branch_pts = np.array(self.branch_pts)
-        if branch_pts.ndim == 1:
+        if len(branch_pts) == 0:
+            return
+        elif branch_pts.ndim == 1:
             branch_pts = branch_pts.reshape(1, 2)  # if single branch point
         elif branch_pts.shape[-1] != 2:
             raise ValueError("Branch points are not shaped correctly. Expected Nx2.")
