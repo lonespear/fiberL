@@ -1,9 +1,9 @@
 streamlit==1.25.0
 streamlit-drawable-canvas==0.9.3
+streamlit-cropper==0.2.2
 opencv-python-headless
 numpy
 Pillow
-streamlit-cropper
 scikit-image
 matplotlib
 seaborn
