@@ -63,18 +63,24 @@ if uploaded_file:
     )
 
     if scale_canvas.json_data is not None:
-        objs = scale_canvas.json_data["objects"]
-        if objs and objs[0]["type"] == "line":
-            x1, y1 = objs[0]["x"], objs[0]["y"]
-            x2, y2 = x1 + objs[0]["width"], y1 + objs[0]["height"]
-            pixel_distance = np.linalg.norm([x2 - x1, y2 - y1])
-            st.write(f"🧮 Pixel Length: `{pixel_distance:.2f}`")
+        objs = scale_canvas.json_data.get("objects", [])
+        if objs and objs[0].get("type") == "line":
+            line = objs[0]
+            if all(k in line for k in ["x", "y", "width", "height"]):
+                x1, y1 = line["x"], line["y"]
+                x2, y2 = x1 + line["width"], y1 + line["height"]
+                pixel_distance = np.linalg.norm([x2 - x1, y2 - y1])
+                st.write(f"🧮 Pixel Length: `{pixel_distance:.2f}`")
+            else:
+                st.warning("✏️ Please draw a **line** using the tool above.")
+        else:
+            st.info("👈 Draw a line to measure the pixel length of the scale bar.")
 
-            real_length = st.number_input(f"Enter the real-world length of the scale bar (in {selected_unit})", min_value=0.0001)
-            if real_length:
-                pixels_per_unit = pixel_distance / real_length
-                st.session_state["pixels_per_unit"] = pixels_per_unit
-                st.session_state["unit_label"] = selected_unit
+        real_length = st.number_input(f"Enter the real-world length of the scale bar (in {selected_unit})", min_value=0.0001)
+        if real_length:
+            pixels_per_unit = pixel_distance / real_length
+            st.session_state["pixels_per_unit"] = pixels_per_unit
+            st.session_state["unit_label"] = selected_unit
 
     if st.session_state.cropped_img is None:
         st.subheader("🖼️ Crop Region of Interest")
