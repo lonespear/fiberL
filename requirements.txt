@@ -1,5 +1,5 @@
 streamlit>=1.33.0
-streamlit-drawable-canvas==0.9.3
+git+https://github.com/andfanilo/streamlit-drawable-canvas.git@master
 streamlit-cropper==0.2.2
 opencv-python-headless
 numpy
