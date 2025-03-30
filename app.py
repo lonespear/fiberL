@@ -39,10 +39,11 @@ if uploaded_file:
     img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     # Save and reopen to make sure .format is properly set
-    with tempfile.NamedTemporaryFile(suffix=".tiff", delete=False) as tmp:
-        Image.fromarray(img_rgb).save(tmp.name, format="TIFF")
-        img_pil = Image.open(tmp.name)
-
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+        img_path = tmp.name
+        Image.fromarray(img_rgb).save(img_path, format="PNG")
+        img_pil = Image.open(img_path)
+        img_pil.load()  # 🔧 Force-load image so format/size are available
 
     st.sidebar.subheader("📐 Scale Units")
     unit_options = ["microns", "nanometers", "millimeters", "inches"]
