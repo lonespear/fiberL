@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 from PIL import Image
 from streamlit_cropper import st_cropper
+from streamlit_drawable_canvas import st_canvas
 from fiberL import fiberL  # Ensure your fiberL code is saved as 'fiberL_module.py'
 import tempfile
 import shutil
@@ -38,6 +39,37 @@ if uploaded_file:
     img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img_pil = Image.fromarray(img_rgb)
+
+    st.sidebar.subheader("📐 Scale Units")
+    unit_options = ["microns", "nanometers", "millimeters", "inches"]
+    selected_unit = st.sidebar.selectbox("Choose unit of measurement", unit_options, index=0)
+
+    st.subheader("📏 Step 1: Measure Scale Bar")
+
+    scale_canvas = st_canvas(
+        fill_color="rgba(255, 0, 0, 0.3)",
+        stroke_width=2,
+        background_image=img_pil,
+        update_streamlit=True,
+        height=img_pil.height,
+        width=img_pil.width,
+        drawing_mode="line",
+        key="scale_bar"
+    )
+
+    if scale_canvas.json_data is not None:
+        objs = scale_canvas.json_data["objects"]
+        if objs and objs[0]["type"] == "line":
+            x1, y1 = objs[0]["x"], objs[0]["y"]
+            x2, y2 = x1 + objs[0]["width"], y1 + objs[0]["height"]
+            pixel_distance = np.linalg.norm([x2 - x1, y2 - y1])
+            st.write(f"🧮 Pixel Length: `{pixel_distance:.2f}`")
+
+            real_length = st.number_input(f"Enter the real-world length of the scale bar (in {selected_unit})", min_value=0.0001)
+            if real_length:
+                pixels_per_unit = pixel_distance / real_length
+                st.session_state["pixels_per_unit"] = pixels_per_unit
+                st.session_state["unit_label"] = selected_unit
 
     if st.session_state.cropped_img is None:
         st.subheader("🖼️ Crop Region of Interest")
@@ -81,7 +113,8 @@ if uploaded_file:
             min_prune=min_prune,
             max_node_dist=max_node_dist,
             cos_thresh=cos_thresh,
-            curvature_thresh=curvature_thresh
+            curvature_thresh=curvature_thresh,
+            pixels_per_unit=st.session_state.get("pixels_per_unit", 1.0)
         )
         analyzer.preproc()
 

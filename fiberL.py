@@ -406,7 +406,8 @@ def mst_sort(points):
 
 class fiberL:
     def __init__(self, image, niter=50, kappa=50, gamma=0.2, thresh_1 = 126, g_blur = 9, thresh_2 = 15, 
-                 ksize = 5, min_prune = 5, max_node_dist=15, tip_distance_thresh = 25, cos_thresh = 0.85, curvature_thresh = 0.85):
+                 ksize = 5, min_prune = 5, max_node_dist=15, tip_distance_thresh = 25, 
+                 cos_thresh = 0.85, curvature_thresh = 0.85, pixels_per_unit=1.0):
         self.image = image
         self.niter = niter
         self.kappa = kappa
@@ -420,6 +421,7 @@ class fiberL:
         self.tip_distance_thresh = tip_distance_thresh
         self.cos_thresh = cos_thresh
         self.curvature_thresh = curvature_thresh
+        self.pixels_per_unit = pixels_per_unit
 
     def preproc(self):
         if self.image is not None:

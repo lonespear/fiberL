@@ -3,6 +3,7 @@ opencv-python-headless
 numpy
 Pillow
 streamlit-cropper
+streamlit-drawable-canvas
 scikit-image
 matplotlib
 seaborn
