@@ -1,4 +1,4 @@
-streamlit==1.25.0
+streamlit>=1.27.0
 streamlit-drawable-canvas==0.9.3
 streamlit-cropper==0.2.2
 opencv-python-headless
