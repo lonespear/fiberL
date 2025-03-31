@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw
 from streamlit_cropper import st_cropper
-from streamlit_image_coordinates import image_coordinates
+from streamlit_image_coordinates import streamlit_image_coordinates
 from fiberL import fiberL  # Ensure your fiberL code is saved as 'fiberL_module.py'
 import tempfile
 import shutil
@@ -51,7 +51,7 @@ if uploaded_file:
 
     # Display image and get click coords
     st.subheader("📏 Step 1: Measure Scale Bar (click two ends)")
-    coords = image_coordinates(img_pil)
+    coords = streamlit_image_coordinates(img_pil)
 
     if coords is not None:
         if 'points' not in st.session_state:
