@@ -1,10 +1,9 @@
 import streamlit as st
 import cv2
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 from streamlit_cropper import st_cropper
-from streamlit_drawable_canvas import st_canvas
-st.write(f"✅ Canvas is from: {st_canvas.__file__}")
+from streamlit_image_coordinates import image_coordinates
 from fiberL import fiberL  # Ensure your fiberL code is saved as 'fiberL_module.py'
 import tempfile
 import shutil
@@ -50,48 +49,58 @@ if uploaded_file:
     unit_options = ["microns", "nanometers", "millimeters", "inches"]
     selected_unit = st.sidebar.selectbox("Choose unit of measurement", unit_options, index=0)
 
-    st.subheader("📏 Step 1: Measure Scale Bar")
+    # Display image and get click coords
+    st.subheader("📏 Step 1: Measure Scale Bar (click two ends)")
+    coords = image_coordinates(img_pil)
 
-    scale_canvas = st_canvas(
-        fill_color="rgba(255, 0, 0, 0.3)",
-        stroke_width=2,
-        background_image=img_pil,
-        update_streamlit=True,
-        height=img_pil.height,
-        width=img_pil.width,
-        drawing_mode="line",
-        key="scale_bar"
-    )
+    if coords is not None:
+        if 'points' not in st.session_state:
+            st.session_state.points = []
 
-    if scale_canvas.json_data is not None:
-        objs = scale_canvas.json_data.get("objects", [])
+        if len(st.session_state.points) < 2:
+            st.session_state.points.append((coords['x'], coords['y']))
+            st.write(f"Point {len(st.session_state.points)}: ({coords['x']:.1f}, {coords['y']:.1f})")
 
-        if objs:
-            line = objs[0]
-            if line.get("type") == "line" and all(k in line for k in ["x", "y", "width", "height"]):
-                x1, y1 = line["x"], line["y"]
-                x2, y2 = x1 + line["width"], y1 + line["height"]
-                pixel_distance = np.linalg.norm([x2 - x1, y2 - y1])
-                st.write(f"🧮 Pixel Length: `{pixel_distance:.2f}`")
+        # Make a copy for annotation
+        annotated = img_pil.copy()
+        draw = ImageDraw.Draw(annotated)
 
-                real_length = st.number_input(
-                    f"Enter the real-world length of the scale bar (in {selected_unit})",
-                    min_value=0.0001
-                )
-                if real_length:
-                    pixels_per_unit = pixel_distance / real_length
-                    st.session_state["pixels_per_unit"] = pixels_per_unit
-                    st.session_state["unit_label"] = selected_unit
-            else:
-                st.warning("⚠️ Please draw a valid line using the measurement tool.")
+        if len(st.session_state.points) >= 1:
+            draw.ellipse(
+                [(st.session_state.points[0][0]-5, st.session_state.points[0][1]-5),
+                 (st.session_state.points[0][0]+5, st.session_state.points[0][1]+5)],
+                fill='red'
+            )
+            draw.text((st.session_state.points[0][0]+6, st.session_state.points[0][1]), "A", fill='red')
+
+        if len(st.session_state.points) == 2:
+            (x1, y1), (x2, y2) = st.session_state.points
+
+            draw.ellipse(
+                [(x2-5, y2-5), (x2+5, y2+5)],
+                fill='blue'
+            )
+            draw.text((x2+6, y2), "B", fill='blue')
+
+            draw.line([x1, y1, x2, y2], fill='yellow', width=2)
+
+            pixel_distance = np.linalg.norm([x2 - x1, y2 - y1])
+            st.image(annotated, caption="📏 Annotated Scale Bar", use_container_width=True)
+            st.write(f"🧮 Pixel Distance: `{pixel_distance:.2f}`")
+
+            real_length = st.number_input(
+                f"Enter real-world length of this line (in {selected_unit})", min_value=0.0001
+            )
+            if real_length:
+                pixels_per_unit = pixel_distance / real_length
+                st.session_state["pixels_per_unit"] = pixels_per_unit
+                st.session_state["unit_label"] = selected_unit
+
+            if st.button("🔁 Reset Measurement"):
+                st.session_state.points = []
+
         else:
-            st.info("👈 No objects detected. Try drawing a line on the canvas.")
-
-        real_length = st.number_input(f"Enter the real-world length of the scale bar (in {selected_unit})", min_value=0.0001)
-        if real_length:
-            pixels_per_unit = pixel_distance / real_length
-            st.session_state["pixels_per_unit"] = pixels_per_unit
-            st.session_state["unit_label"] = selected_unit
+            st.image(annotated, caption="🖱️ Click two points on the image", use_container_width=True)
 
     if st.session_state.cropped_img is None:
         st.subheader("🖼️ Crop Region of Interest")
