@@ -4,16 +4,15 @@ import numpy as np
 from PIL import Image, ImageDraw
 from streamlit_cropper import st_cropper
 from streamlit_image_coordinates import streamlit_image_coordinates
-from fiberL import fiberL  # Ensure your fiberL code is saved as 'fiberL_module.py'
+from fiberL import fiberL
 import tempfile
-import shutil
-from io import BytesIO
 
 st.set_page_config(page_title="Fiber Length Analysis", layout="wide")
 st.title("🧪 Fiber Length Analysis using fiberL")
 
 st.sidebar.header("📸 Upload SEM Image")
-# --- Image Upload + Session State ---
+
+# --- Session State ---
 if 'uploaded_file' not in st.session_state:
     st.session_state.uploaded_file = None
 if 'cropped_img' not in st.session_state:
@@ -21,13 +20,11 @@ if 'cropped_img' not in st.session_state:
 
 new_file = st.sidebar.file_uploader("Choose an image file", type=['png', 'jpg', 'jpeg', 'tif', 'tiff'])
 
-# Reset session if user removes image
-if new_file is None and st.session_state.uploaded_file is not None:
+if new_file is None and st.session_state.uploaded_file:
     st.session_state.uploaded_file = None
     st.session_state.cropped_img = None
     st.rerun()
 
-# If user uploads a new file
 if new_file is not None:
     st.session_state.uploaded_file = new_file
     uploaded_file = new_file
@@ -38,50 +35,47 @@ if uploaded_file:
     file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
     img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    # Save and reopen to make sure .format is properly set
-    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
-        img_path = tmp.name
-        Image.fromarray(img_rgb).save(img_path, format="PNG")
-        img_pil = Image.open(img_path)
-        img_pil.load()  # 🔧 Force-load image so format/size are available
+    pil_original = Image.fromarray(img_rgb)
+
+    # Resize for display (not processing!)
+    max_display_width = 700
+    w_percent = max_display_width / pil_original.width
+    new_height = int(pil_original.height * w_percent)
+    pil_resized = pil_original.resize((max_display_width, new_height))
+
+    scale_ratio = pil_original.width / max_display_width  # used to map back to full size
 
     st.sidebar.subheader("📐 Scale Units")
     unit_options = ["microns", "nanometers", "millimeters", "inches"]
     selected_unit = st.sidebar.selectbox("Choose unit of measurement", unit_options, index=0)
 
-    # Display image and get click coords
     st.subheader("📏 Step 1: Measure Scale Bar (click two ends)")
-    coords = streamlit_image_coordinates(img_pil)
+
+    coords = streamlit_image_coordinates(pil_resized)
 
     if coords is not None:
         if 'points' not in st.session_state:
             st.session_state.points = []
 
         if len(st.session_state.points) < 2:
-            st.session_state.points.append((coords['x'], coords['y']))
-            st.write(f"Point {len(st.session_state.points)}: ({coords['x']:.1f}, {coords['y']:.1f})")
+            # Convert back to original resolution coordinates
+            scaled_point = (coords['x'] * scale_ratio, coords['y'] * scale_ratio)
+            st.session_state.points.append(scaled_point)
+            st.write(f"Point {len(st.session_state.points)}: ({scaled_point[0]:.1f}, {scaled_point[1]:.1f})")
 
-        # Make a copy for annotation
-        annotated = img_pil.copy()
+        annotated = pil_original.copy()
         draw = ImageDraw.Draw(annotated)
 
         if len(st.session_state.points) >= 1:
-            draw.ellipse(
-                [(st.session_state.points[0][0]-5, st.session_state.points[0][1]-5),
-                 (st.session_state.points[0][0]+5, st.session_state.points[0][1]+5)],
-                fill='red'
-            )
-            draw.text((st.session_state.points[0][0]+6, st.session_state.points[0][1]), "A", fill='red')
+            x1, y1 = st.session_state.points[0]
+            draw.ellipse([(x1 - 5, y1 - 5), (x1 + 5, y1 + 5)], fill='red')
+            draw.text((x1 + 6, y1), "A", fill='red')
 
         if len(st.session_state.points) == 2:
-            (x1, y1), (x2, y2) = st.session_state.points
-
-            draw.ellipse(
-                [(x2-5, y2-5), (x2+5, y2+5)],
-                fill='blue'
-            )
-            draw.text((x2+6, y2), "B", fill='blue')
-
+            x1, y1 = st.session_state.points[0]
+            x2, y2 = st.session_state.points[1]
+            draw.ellipse([(x2 - 5, y2 - 5), (x2 + 5, y2 + 5)], fill='blue')
+            draw.text((x2 + 6, y2), "B", fill='blue')
             draw.line([x1, y1, x2, y2], fill='yellow', width=2)
 
             pixel_distance = np.linalg.norm([x2 - x1, y2 - y1])
@@ -99,12 +93,13 @@ if uploaded_file:
             if st.button("🔁 Reset Measurement"):
                 st.session_state.points = []
 
-        else:
-            st.image(annotated, caption="🖱️ Click two points on the image", use_container_width=True)
+        elif len(st.session_state.points) == 1:
+            st.image(annotated, caption="🖱️ Click one more point to complete the scale line", use_container_width=True)
 
+    # -------------------- CROPPING --------------------
     if st.session_state.cropped_img is None:
         st.subheader("🖼️ Crop Region of Interest")
-        rect = st_cropper(img_pil, realtime_update=True, box_color='#FF4B4B', aspect_ratio=None)
+        rect = st_cropper(pil_original, realtime_update=True, box_color='#FF4B4B', aspect_ratio=None)
         cropped_img = np.array(rect)
 
         if st.button("📸 Confirm Crop"):
@@ -172,4 +167,3 @@ if uploaded_file:
                 with st.expander("📤 Export Results"):
                     analyzer.export_results_streamlit()
                     st.success("Results exported to fiberL_output folder!")
-
