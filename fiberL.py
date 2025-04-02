@@ -358,7 +358,7 @@ def exp_decay(s, Lp):
     return np.exp(-s / Lp)
 
 def estimate_persistence_length(coords):
-    coords = np.array(coords)
+    coords = np.array(coords).reshape(-1, 2)
 
     if coords.ndim != 2 or coords.shape[0] < 3:
         # Too short or not 2D: return np.nan or 0
