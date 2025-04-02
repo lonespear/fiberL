@@ -18,6 +18,10 @@ if 'cropped_img' not in st.session_state:
     st.session_state.cropped_img = None
 if 'points' not in st.session_state:
     st.session_state.points = []
+if 'pixels_per_unit' not in st.session_state:
+    st.session_state['pixels_per_unit'] = None
+if 'unit_label' not in st.session_state:
+    st.session_state['unit_label'] = None
 
 uploaded_file = st.sidebar.file_uploader("Choose an image file", type=['png', 'jpg', 'jpeg', 'tif', 'tiff'])
 
@@ -41,7 +45,16 @@ if uploaded_file:
 
     st.markdown("## ⚙️ Workflow Options")
     scale_toggle = st.toggle("Enable Scale Measurement", value=True)
+    if not scale_toggle:
+        st.warning("⚠️ **Scale measurement disabled:** All fiber length measurements will be in pixels.")
     crop_toggle = st.toggle("Enable Cropping", value=True)
+
+    # Sidebar Reset button at the end
+    if st.sidebar.button("🔄 Reset Entire Workflow"):
+        for key in ['uploaded_file', 'cropped_img', 'points', 'pixels_per_unit', 'unit_label']:
+            if key in st.session_state:
+                del st.session_state[key]
+        st.rerun()
 
     # --- SCALE MEASUREMENT ---
     if scale_toggle:
@@ -90,15 +103,15 @@ if uploaded_file:
 
     # --- CROPPING ---
     if crop_toggle:
-        if st.session_state.cropped_img is None:
-            st.subheader("🖼️ Crop Region of Interest")
-            rect = st_cropper(pil_original, realtime_update=True, box_color='#FF4B4B', aspect_ratio=None)
-            cropped_img = np.array(rect)
-            if st.button("📸 Confirm Crop"):
-                st.session_state.cropped_img = cropped_img
-                st.rerun()
-        else:
-            cropped_img = st.session_state.cropped_img
+        st.subheader("🖼️ Crop Region of Interest")
+        rect = st_cropper(pil_original, realtime_update=True, box_color='#FF4B4B', aspect_ratio=None)
+        cropped_img = np.array(rect)
+        st.image(cropped_img, caption="Cropped Region Preview", use_container_width=True)
+
+        if st.button("📸 Confirm Crop"):
+            st.session_state.cropped_img = cropped_img
+            st.success("Crop Confirmed!")
+            st.rerun()
     else:
         cropped_img = np.array(pil_original)
 
@@ -121,22 +134,30 @@ if uploaded_file:
     cos_thresh = st.sidebar.slider("Tip Merging Cosine Threshold", 0.0, 1.0, 0.85)
     curvature_thresh = st.sidebar.slider("Curvature Similarity Threshold", 0.0, 1.0, 0.85)
 
+    if not scale_toggle and not crop_toggle:
+        st.info("ℹ️ **Scale measurement and cropping skipped:** Proceeding directly to preprocessing.")
+
+
     st.subheader("🔍 Skeletonization Preview")
-    analyzer = fiberL(
-        image=cropped_img.copy(),
-        niter=niter,
-        kappa=kappa,
-        gamma=gamma,
-        thresh_1=thresh_1,
-        g_blur=g_blur,
-        thresh_2=thresh_2,
-        ksize=ksize,
-        min_prune=min_prune,
-        max_node_dist=max_node_dist,
-        cos_thresh=cos_thresh,
-        curvature_thresh=curvature_thresh,
-        pixels_per_unit=st.session_state.get("pixels_per_unit", 1.0)
-    )
+    def create_analyzer(image):
+        return fiberL(
+            image=image.copy(),
+            niter=niter,
+            kappa=kappa,
+            gamma=gamma,
+            thresh_1=thresh_1,
+            g_blur=g_blur,
+            thresh_2=thresh_2,
+            ksize=ksize,
+            min_prune=min_prune,
+            max_node_dist=max_node_dist,
+            cos_thresh=cos_thresh,
+            curvature_thresh=curvature_thresh,
+            pixels_per_unit=st.session_state.get("pixels_per_unit", 1.0)
+        )
+
+    # Usage in your app for preview:
+    analyzer = create_analyzer(cropped_img)
     analyzer.preproc()
 
     col1, col2 = st.columns(2)
@@ -145,7 +166,10 @@ if uploaded_file:
     with col2:
         st.image(analyzer.sk_image * 255, caption="Skeletonized Image", use_container_width=True, clamp=True)
 
-    if st.button("🚀 Run Full Fiber Length Analysis"):
+if st.button("🚀 Run Full Fiber Length Analysis"):
+    if scale_toggle and st.session_state['pixels_per_unit'] is None:
+        st.error("⚠️ You must complete scale measurement first.")
+    else:
         with st.spinner("Processing image... This may take a moment..."):
             analyzer.find_length()
             st.success("✅ Analysis Complete!")
@@ -154,6 +178,8 @@ if uploaded_file:
             st.image(analyzer.color_image, channels="RGB", use_container_width=True)
 
             st.subheader("📊 Fiber Length Histogram")
+            analyzer.ax.set_xlabel(f'Fiber Length ({st.session_state.get("unit_label", "pixels")})')
+            analyzer.ax.set_ylabel('Count')
             st.pyplot(analyzer.fig)
 
             st.subheader("📊 Summary Statistics")
