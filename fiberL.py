@@ -763,7 +763,8 @@ class fiberL:
             np.degrees(np.arctan2(*PCA(n_components=1).fit(edge.reshape(-1, 2)).components_[0][::-1])) % 180
             if len(edge) >= 2 else np.nan for edge in self.edges
         ]
-        self.pers_lengths = [estimate_persistence_length(edge) if self.arc_lengths[idx] > self.min_prune else np.nan for idx, edge in enumerate(self.edges)]
+        p_lengths = [estimate_persistence_length(edge) if self.arc_lengths[idx] >= self.min_prune else np.nan for idx, edge in enumerate(self.edges)]
+        self.pers_lengths = np.array(p_lengths)[~np.isnan(p_lengths)]
 
         self.stats = {
                     "Mean": [np.mean(self.arc_lengths), np.mean(self.angles), np.mean(self.pers_lengths)],
