@@ -68,27 +68,21 @@ if uploaded_file:
         annotated = pil_original.copy()
         draw = ImageDraw.Draw(annotated)
 
-        if len(st.session_state.points) == 1:
-            x1, y1 = st.session_state.points[0]
-            draw.ellipse([(x1 - 5, y1 - 5), (x1 + 5, y1 + 5)], fill='red')
-            draw.text((x1 + 6, y1), "A", fill='red')
-
-        elif len(st.session_state.points) == 2:
-            x1, y1 = st.session_state.points[0]
-            x2, y2 = st.session_state.points[1]
-
-            draw.ellipse([(x1 - 5, y1 - 5), (x1 + 5, y1 + 5)], fill='red')
-            draw.text((x1 + 6, y1), "A", fill='red')
-
-            draw.ellipse([(x2 - 5, y2 - 5), (x2 + 5, y2 + 5)], fill='blue')
-            draw.text((x2 + 6, y2), "B", fill='blue')
-
-            draw.line([x1, y1, x2, y2], fill='yellow', width=2)
-
         col1, col2 = st.columns(2)
 
         with col1:
             st.image(pil_original, caption="Original Image", use_container_width=True)
+
+        if len(st.session_state.points) >= 1:
+            x1, y1 = st.session_state.points[0]
+            draw.ellipse([(x1 - 5, y1 - 5), (x1 + 5, y1 + 5)], fill='red')
+            draw.text((x1 + 6, y1), "A", fill='red')
+
+        if len(st.session_state.points) == 2:
+            x2, y2 = st.session_state.points[1]
+            draw.ellipse([(x2 - 5, y2 - 5), (x2 + 5, y2 + 5)], fill='blue')
+            draw.text((x2 + 6, y2), "B", fill='blue')
+            draw.line([x1, y1, x2, y2], fill='yellow', width=2)
 
         with col2:
             if len(st.session_state.points) > 0:
