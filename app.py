@@ -177,9 +177,7 @@ if st.button("🚀 Run Full Fiber Length Analysis"):
             st.subheader("🎨 Final Colored Edge Network")
             st.image(analyzer.color_image, channels="RGB", use_container_width=True)
 
-            st.subheader("📊 Fiber Length Histogram")
-            analyzer.ax.set_xlabel(f'Fiber Length ({st.session_state.get("unit_label", "pixels")})')
-            analyzer.ax.set_ylabel('Count')
+            st.subheader("📊 Visual Summary")
             st.pyplot(analyzer.fig)
 
             st.subheader("📊 Summary Statistics")
