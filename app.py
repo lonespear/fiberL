@@ -174,20 +174,21 @@ if uploaded_file:
     with col2:
         st.image(analyzer.sk_image * 255, caption="Skeletonized Image", use_container_width=True, clamp=True)
 
-if st.button("🚀 Run Full Fiber Length Analysis"):
-    if scale_toggle and st.session_state['pixels_per_unit'] is None:
-        st.error("⚠️ You must complete scale measurement first.")
-    else:
-        with st.spinner("Processing image... This may take a moment..."):
-            analyzer.find_length()
-            st.success("✅ Analysis Complete!")
+if 'uploaded_file' in st.session_state:
+    if st.button("🚀 Run Full Fiber Length Analysis"):
+        if scale_toggle and st.session_state['pixels_per_unit'] is None:
+            st.error("⚠️ You must complete scale measurement first.")
+        else:
+            with st.spinner("Processing image... This may take a moment..."):
+                analyzer.find_length()
+                st.success("✅ Analysis Complete!")
 
-            st.subheader("📊 Visual Summary")
-            st.pyplot(analyzer.fig, use_container_width=True)
+                st.subheader("📊 Visual Summary")
+                st.pyplot(analyzer.fig, use_container_width=True)
 
-            st.subheader("📊 Summary Statistics")
-            st.dataframe(analyzer.stats_df.style.format({"Value": "{:.2f}"}))
+                st.subheader("📊 Summary Statistics")
+                st.dataframe(analyzer.stats_df.style.format({"Value": "{:.2f}"}))
 
-            with st.expander("📤 Export Results"):
-                analyzer.export_results_streamlit()
-                st.success("Results exported to fiberL_output folder!")
+                with st.expander("📤 Export Results"):
+                    analyzer.export_results_streamlit()
+                    st.success("Results exported to fiberL_output folder!")
