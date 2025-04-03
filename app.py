@@ -73,7 +73,6 @@ if uploaded_file:
             draw.ellipse([(x1 - 5, y1 - 5), (x1 + 5, y1 + 5)], fill='red')
             draw.text((x1 + 6, y1), "A", fill='red')
             st.write(f"🔴 Point A: ({x1:.1f}, {y1:.1f})")
-            st.image(annotated, caption="🖱️ Click one more point to complete the scale line", use_container_width=True)
 
         elif len(st.session_state.points) == 2:
             x1, y1 = st.session_state.points[0]
@@ -100,11 +99,11 @@ if uploaded_file:
                 st.session_state["pixels_per_unit"] = pixels_per_unit
                 st.session_state["unit_label"] = selected_unit
 
-            col1, col2 = st.columns(2)
-            with col1:
-                st.image(pil_original, caption="Original Image", use_container_width=True)
-            with col2:
-                st.image(annotated, caption="Annotated Scale Bar", use_container_width=True)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.image(pil_original, caption="Original Image", use_container_width=True)
+        with col2:
+            st.image(annotated, caption="Annotated Scale Bar", use_container_width=True)
 
         if len(st.session_state.points) == 2 and st.button("🔁 Reset Measurement"):
             st.session_state.points = []
@@ -174,8 +173,8 @@ if uploaded_file:
     with col2:
         st.image(analyzer.sk_image * 255, caption="Skeletonized Image", use_container_width=True, clamp=True)
 
-if 'uploaded_file' in st.session_state:
-    if st.button("🚀 Run Full Fiber Length Analysis"):
+if st.session_state.get('uploaded_file') is not None:
+    if st.button("🚀 Run Fiber Analysis"):
         if scale_toggle and st.session_state['pixels_per_unit'] is None:
             st.error("⚠️ You must complete scale measurement first.")
         else:
