@@ -46,7 +46,7 @@ if uploaded_file:
     st.markdown("## ⚙️ Workflow Options")
     scale_toggle = st.toggle("Enable Scale Measurement", value=True)
     if not scale_toggle:
-        st.warning("⚠️ **Scale measurement disabled:** All fiber length measurements will be in pixels.")
+        st.info("⚠️ **Scale measurement disabled:** All fiber length measurements will be in pixels.")
     crop_toggle = st.toggle("Enable Cropping", value=True)
 
     # Sidebar Reset button at the end
@@ -64,42 +64,50 @@ if uploaded_file:
         if coords and len(st.session_state.points) < 2:
             scaled_point = (coords['x'] * scale_ratio, coords['y'] * scale_ratio)
             st.session_state.points.append(scaled_point)
-            st.write(f"Point {len(st.session_state.points)}: ({scaled_point[0]:.1f}, {scaled_point[1]:.1f})")
 
         annotated = pil_original.copy()
         draw = ImageDraw.Draw(annotated)
 
-        if len(st.session_state.points) >= 1:
+        if len(st.session_state.points) == 1:
             x1, y1 = st.session_state.points[0]
             draw.ellipse([(x1 - 5, y1 - 5), (x1 + 5, y1 + 5)], fill='red')
             draw.text((x1 + 6, y1), "A", fill='red')
+            st.write(f"🔴 Point A: ({x1:.1f}, {y1:.1f})")
+            st.image(annotated, caption="🖱️ Click one more point to complete the scale line", use_container_width=True)
 
-        if len(st.session_state.points) == 2:
+        elif len(st.session_state.points) == 2:
             x1, y1 = st.session_state.points[0]
             x2, y2 = st.session_state.points[1]
+
+            draw.ellipse([(x1 - 5, y1 - 5), (x1 + 5, y1 + 5)], fill='red')
+            draw.text((x1 + 6, y1), "A", fill='red')
+
             draw.ellipse([(x2 - 5, y2 - 5), (x2 + 5, y2 + 5)], fill='blue')
             draw.text((x2 + 6, y2), "B", fill='blue')
+
             draw.line([x1, y1, x2, y2], fill='yellow', width=2)
 
             pixel_distance = np.linalg.norm([x2 - x1, y2 - y1])
-            st.image(annotated, caption="📏 Annotated Scale Bar", use_container_width=True)
-            st.write(f"🧮 Pixel Distance: `{pixel_distance:.2f}`")
+
+            st.write(f"🔴🔵 Points: A({x1:.1f}, {y1:.1f}) → B({x2:.1f}, {y2:.1f}) | Distance: `{pixel_distance:.2f}` pixels")
 
             real_length = st.number_input(
                 f"Enter real-world length of this line (in {selected_unit})", min_value=0.0001
             )
+
             if real_length:
                 pixels_per_unit = pixel_distance / real_length
                 st.session_state["pixels_per_unit"] = pixels_per_unit
                 st.session_state["unit_label"] = selected_unit
 
-            if st.button("🔁 Reset Measurement"):
-                st.session_state.points = []
-        elif len(st.session_state.points) == 1:
-            st.image(annotated, caption="🖱️ Click one more point to complete the scale line", use_container_width=True)
+            col1, col2 = st.columns(2)
+            with col1:
+                st.image(pil_original, caption="Original Image", use_container_width=True)
+            with col2:
+                st.image(annotated, caption="Annotated Scale Bar", use_container_width=True)
 
-        if len(st.session_state.points) < 2:
-            st.stop()  # Don't continue to cropping unless both points are selected
+        if len(st.session_state.points) == 2 and st.button("🔁 Reset Measurement"):
+            st.session_state.points = []
 
     # --- CROPPING ---
     if crop_toggle:
