@@ -175,7 +175,7 @@ if st.button("🚀 Run Full Fiber Length Analysis"):
             st.success("✅ Analysis Complete!")
 
             st.subheader("📊 Visual Summary")
-            st.pyplot(analyzer.fig, use_container_width=True, clamp=True)
+            st.pyplot(analyzer.fig, use_container_width=True)
 
             st.subheader("📊 Summary Statistics")
             st.dataframe(analyzer.stats_df.style.format({"Value": "{:.2f}"}))
