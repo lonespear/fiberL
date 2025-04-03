@@ -174,6 +174,9 @@ if st.button("🚀 Run Full Fiber Length Analysis"):
             analyzer.find_length()
             st.success("✅ Analysis Complete!")
 
+            st.subheader("📊 Visual Summary")
+            st.image(analyzer.fig, use_container_width=True, clamp=True)
+
             st.subheader("📊 Summary Statistics")
             st.dataframe(analyzer.stats_df.style.format({"Value": "{:.2f}"}))
 
