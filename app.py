@@ -56,76 +56,76 @@ if uploaded_file:
                 del st.session_state[key]
         st.rerun()
 
-# --- SCALE MEASUREMENT ---
-if scale_toggle:
-    st.subheader("📏 Step 1: Measure Scale Bar (click two ends)")
-    coords = streamlit_image_coordinates(pil_resized)
+    # --- SCALE MEASUREMENT ---
+    if scale_toggle:
+        st.subheader("📏 Step 1: Measure Scale Bar (click two ends)")
+        coords = streamlit_image_coordinates(pil_resized)
 
-    if coords and len(st.session_state.points) < 2:
-        scaled_point = (coords['x'] * scale_ratio, coords['y'] * scale_ratio)
-        st.session_state.points.append(scaled_point)
+        if coords and len(st.session_state.points) < 2:
+            scaled_point = (coords['x'] * scale_ratio, coords['y'] * scale_ratio)
+            st.session_state.points.append(scaled_point)
 
-    annotated = pil_original.copy()
-    draw = ImageDraw.Draw(annotated)
+        annotated = pil_original.copy()
+        draw = ImageDraw.Draw(annotated)
 
-    if len(st.session_state.points) == 1:
-        x1, y1 = st.session_state.points[0]
-        draw.ellipse([(x1 - 5, y1 - 5), (x1 + 5, y1 + 5)], fill='red')
-        draw.text((x1 + 6, y1), "A", fill='red')
+        if len(st.session_state.points) == 1:
+            x1, y1 = st.session_state.points[0]
+            draw.ellipse([(x1 - 5, y1 - 5), (x1 + 5, y1 + 5)], fill='red')
+            draw.text((x1 + 6, y1), "A", fill='red')
 
-    elif len(st.session_state.points) == 2:
-        x1, y1 = st.session_state.points[0]
-        x2, y2 = st.session_state.points[1]
+        elif len(st.session_state.points) == 2:
+            x1, y1 = st.session_state.points[0]
+            x2, y2 = st.session_state.points[1]
 
-        draw.ellipse([(x1 - 5, y1 - 5), (x1 + 5, y1 + 5)], fill='red')
-        draw.text((x1 + 6, y1), "A", fill='red')
+            draw.ellipse([(x1 - 5, y1 - 5), (x1 + 5, y1 + 5)], fill='red')
+            draw.text((x1 + 6, y1), "A", fill='red')
 
-        draw.ellipse([(x2 - 5, y2 - 5), (x2 + 5, y2 + 5)], fill='blue')
-        draw.text((x2 + 6, y2), "B", fill='blue')
+            draw.ellipse([(x2 - 5, y2 - 5), (x2 + 5, y2 + 5)], fill='blue')
+            draw.text((x2 + 6, y2), "B", fill='blue')
 
-        draw.line([x1, y1, x2, y2], fill='yellow', width=2)
+            draw.line([x1, y1, x2, y2], fill='yellow', width=2)
 
-    col1, col2 = st.columns(2)
+        col1, col2 = st.columns(2)
 
-    with col1:
-        st.image(pil_original, caption="Original Image", use_container_width=True)
+        with col1:
+            st.image(pil_original, caption="Original Image", use_container_width=True)
 
-    with col2:
-        if len(st.session_state.points) > 0:
-            st.image(annotated, caption="Annotated Scale Bar", use_container_width=True)
+        with col2:
+            if len(st.session_state.points) > 0:
+                st.image(annotated, caption="Annotated Scale Bar", use_container_width=True)
 
-    if len(st.session_state.points) == 1:
-        st.write(f"🔴 Point A: ({x1:.1f}, {y1:.1f})")
+        if len(st.session_state.points) == 1:
+            st.write(f"🔴 Point A: ({x1:.1f}, {y1:.1f})")
 
-    elif len(st.session_state.points) == 2:
-        pixel_distance = np.linalg.norm([x2 - x1, y2 - y1])
-        st.write(f"🔴🔵 Points: A({x1:.1f}, {y1:.1f}) → B({x2:.1f}, {y2:.1f}) | Distance: `{pixel_distance:.2f}` pixels")
+        elif len(st.session_state.points) == 2:
+            pixel_distance = np.linalg.norm([x2 - x1, y2 - y1])
+            st.write(f"🔴🔵 Points: A({x1:.1f}, {y1:.1f}) → B({x2:.1f}, {y2:.1f}) | Distance: `{pixel_distance:.2f}` pixels")
 
-        real_length = st.number_input(
-            f"Enter real-world length of this line (in {selected_unit})", min_value=0.0001
-        )
+            real_length = st.number_input(
+                f"Enter real-world length of this line (in {selected_unit})", min_value=0.0001
+            )
 
-        if real_length:
-            pixels_per_unit = pixel_distance / real_length
-            st.session_state["pixels_per_unit"] = pixels_per_unit
-            st.session_state["unit_label"] = selected_unit
+            if real_length:
+                pixels_per_unit = pixel_distance / real_length
+                st.session_state["pixels_per_unit"] = pixels_per_unit
+                st.session_state["unit_label"] = selected_unit
 
-    if len(st.session_state.points) == 2 and st.button("🔁 Reset Measurement"):
-        st.session_state.points = []
+        if len(st.session_state.points) == 2 and st.button("🔁 Reset Measurement"):
+            st.session_state.points = []
 
-    # --- CROPPING ---
-    if crop_toggle:
-        st.subheader("🖼️ Crop Region of Interest")
-        rect = st_cropper(pil_original, realtime_update=True, box_color='#FF4B4B', aspect_ratio=None)
-        cropped_img = np.array(rect)
-        st.image(cropped_img, caption="Cropped Region Preview", use_container_width=True)
+        # --- CROPPING ---
+        if crop_toggle:
+            st.subheader("🖼️ Crop Region of Interest")
+            rect = st_cropper(pil_original, realtime_update=True, box_color='#FF4B4B', aspect_ratio=None)
+            cropped_img = np.array(rect)
+            st.image(cropped_img, caption="Cropped Region Preview", use_container_width=True)
 
-        if st.button("📸 Confirm Crop"):
-            st.session_state.cropped_img = cropped_img
-            st.success("Crop Confirmed!")
-            st.rerun()
-    else:
-        cropped_img = np.array(pil_original)
+            if st.button("📸 Confirm Crop"):
+                st.session_state.cropped_img = cropped_img
+                st.success("Crop Confirmed!")
+                st.rerun()
+        else:
+            cropped_img = np.array(pil_original)
 
     # --- PREPROCESSING + ANALYSIS ---
     st.sidebar.header("⚙️ Preprocessing Parameters")
