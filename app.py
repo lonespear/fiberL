@@ -38,6 +38,7 @@ if uploaded_file:
     new_height = int(pil_original.height * w_percent)
     pil_resized = pil_original.resize((max_display_width, new_height))
     scale_ratio = pil_original.width / max_display_width
+    pixel_distance = 1
 
     st.sidebar.subheader("📐 Scale Units")
     unit_options = ["microns", "nanometers", "millimeters", "inches"]
