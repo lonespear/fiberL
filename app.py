@@ -59,6 +59,7 @@ if uploaded_file:
     # --- SCALE MEASUREMENT ---
     if scale_toggle:
         st.subheader("📏 Step 1: Measure Scale Bar (click two ends)")
+        
         coords = streamlit_image_coordinates(pil_resized)
 
         if coords and len(st.session_state.points) < 2:
@@ -67,11 +68,6 @@ if uploaded_file:
 
         annotated = pil_original.copy()
         draw = ImageDraw.Draw(annotated)
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.image(pil_original, caption="Original Image", use_container_width=True)
 
         if len(st.session_state.points) >= 1:
             x1, y1 = st.session_state.points[0]
@@ -84,10 +80,12 @@ if uploaded_file:
             draw.text((x2 + 6, y2), "B", fill='blue')
             draw.line([x1, y1, x2, y2], fill='yellow', width=2)
 
-        with col2:
+        # Show annotated image next to the interactive one
+        with st.columns(2)[1]:
             if len(st.session_state.points) > 0:
                 st.image(annotated, caption="Annotated Scale Bar", use_container_width=True)
 
+        # Info below the images
         if len(st.session_state.points) == 1:
             st.write(f"🔴 Point A: ({x1:.1f}, {y1:.1f})")
 
