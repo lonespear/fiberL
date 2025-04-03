@@ -174,12 +174,6 @@ if st.button("🚀 Run Full Fiber Length Analysis"):
             analyzer.find_length()
             st.success("✅ Analysis Complete!")
 
-            st.subheader("🎨 Final Colored Edge Network")
-            st.image(analyzer.color_image, channels="RGB", use_container_width=True)
-
-            st.subheader("📊 Visual Summary")
-            st.pyplot(analyzer.fig)
-
             st.subheader("📊 Summary Statistics")
             st.dataframe(analyzer.stats_df.style.format({"Value": "{:.2f}"}))
 
