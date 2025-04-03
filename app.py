@@ -80,11 +80,6 @@ if uploaded_file:
             draw.text((x2 + 6, y2), "B", fill='blue')
             draw.line([x1, y1, x2, y2], fill='yellow', width=2)
 
-        # Show annotated image next to the interactive one
-        with st.columns(2)[1]:
-            if len(st.session_state.points) > 0:
-                st.image(annotated, caption="Annotated Scale Bar", use_container_width=True)
-
         # Info below the images
         if len(st.session_state.points) == 1:
             st.write(f"🔴 Point A: ({x1:.1f}, {y1:.1f})")
@@ -93,6 +88,8 @@ if uploaded_file:
             pixel_distance = np.linalg.norm([x2 - x1, y2 - y1])
             st.write(f"🔴🔵 Points: A({x1:.1f}, {y1:.1f}) → B({x2:.1f}, {y2:.1f}) | Distance: `{pixel_distance:.2f}` pixels")
 
+        col_a, _,_,_,_,_ = st.columns(6)
+        with col_a:
             real_length = st.number_input(
                 f"Enter real-world length of this line (in {selected_unit})", min_value=0.0001
             )
@@ -101,6 +98,7 @@ if uploaded_file:
                 pixels_per_unit = pixel_distance / real_length
                 st.session_state["pixels_per_unit"] = pixels_per_unit
                 st.session_state["unit_label"] = selected_unit
+                st.write(f"Pixel Conversion: {pixels_per_unit} {selected_unit}")
 
         if len(st.session_state.points) == 2 and st.button("🔁 Reset Measurement"):
             st.session_state.points = []
@@ -110,7 +108,6 @@ if uploaded_file:
             st.subheader("🖼️ Crop Region of Interest")
             rect = st_cropper(pil_original, realtime_update=True, box_color='#FF4B4B', aspect_ratio=None)
             cropped_img = np.array(rect)
-            st.image(cropped_img, caption="Cropped Region Preview", use_container_width=True)
 
             if st.button("📸 Confirm Crop"):
                 st.session_state.cropped_img = cropped_img
