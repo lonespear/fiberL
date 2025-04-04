@@ -14,7 +14,7 @@ from matplotlib.colors import Normalize
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.figure import Figure
 import matplotlib.gridspec as gridspec
-from seaborn import boxplot, histplot, despine
+from seaborn import boxplot, histplot, kdeplot
 from sklearn.decomposition import PCA
 from scipy.spatial import distance, KDTree
 from scipy.optimize import curve_fit
@@ -405,13 +405,14 @@ def mst_sort(points):
     return points[path]
 
 class fiberL:
-    def __init__(self, image, niter=50, kappa=50, gamma=0.2, thresh_1 = 126, g_blur = 9, thresh_2 = 15, 
-                 ksize = 5, min_prune = 5, max_node_dist=15, tip_distance_thresh = 25, 
-                 cos_thresh = 0.85, curvature_thresh = 0.85, pixels_per_unit=1.0):
+    def __init__(self, image, niter=50, kappa=50, gamma=0.2, option = 3, thresh_1 = 126, 
+                 g_blur = 9, thresh_2 = 15, ksize = 5, min_prune = 5, max_node_dist=15, 
+                 tip_distance_thresh = 25, cos_thresh = 0.85, curvature_thresh = 0.85, pixels_per_unit=1.0):
         self.image = image
         self.niter = niter
         self.kappa = kappa
         self.gamma=gamma
+        self.option=option
         self.thresh_1 = thresh_1
         self.thresh_2 = thresh_2
         self.g_blur = g_blur
@@ -434,7 +435,7 @@ class fiberL:
                 gray_image = self.image.copy()
 
             print("  ⏳ Running anisotropic diffusion...")
-            self.diff_img = anisotropic_diffusion(gray_image, niter=self.niter, kappa=self.kappa, gamma=self.gamma, option=1)
+            self.diff_img = anisotropic_diffusion(gray_image, niter=self.niter, kappa=self.kappa, gamma=self.gamma, option=self.option)
             self.binary_thresh = cv2.threshold(self.diff_img, self.thresh_1, 255, cv2.THRESH_BINARY)[1].astype('uint8')
             self.binary_canny = cv2.Canny((self.diff_img).astype(np.uint8), 20, 60)
             self.binary_image = cv2.bitwise_or(self.binary_thresh, self.binary_canny)
@@ -758,20 +759,38 @@ class fiberL:
         - Top row: Original image, skeletonized image, colored edge network
         - Bottom row: Length distribution, rose diagram (orientation), angle vs length scatter
         """
+        # Compute arc lengths for all edges
         self.arc_lengths = [cv2.arcLength(edge, closed=False) for edge in self.edges]
+
+        # Compute angles using PCA (only if edge has at least 2 points)
         self.angles = [
             np.degrees(np.arctan2(*PCA(n_components=1).fit(edge.reshape(-1, 2)).components_[0][::-1])) % 180
             if len(edge) >= 2 else np.nan for edge in self.edges
         ]
-        p_lengths = [estimate_persistence_length(edge) if self.arc_lengths[idx] >= self.min_prune else np.nan for idx, edge in enumerate(self.edges)]
-        self.pers_lengths = np.array(p_lengths)[~np.isnan(p_lengths)]
+
+        # Estimate persistence lengths if the arc length meets the minimum threshold; otherwise, assign NaN
+        p_lengths = [
+            estimate_persistence_length(edge) if self.arc_lengths[idx] >= self.min_prune else np.nan 
+            for idx, edge in enumerate(self.edges)
+        ]
+
+        # Create a boolean mask for valid persistence lengths (i.e., not NaN)
+        valid = ~np.isnan(p_lengths)
+
+        # Filter persistence lengths and corresponding arc lengths
+        self.pers_lengths = np.array(p_lengths)[valid]
+        valid_arc_lengths = np.array(self.arc_lengths)[valid]
+
+        # Compute the length coefficient (persistence / arc length) for valid cases
+        self.len_coef = self.pers_lengths / valid_arc_lengths
 
         self.stats = {
-                    "Mean": [np.mean(self.arc_lengths), np.mean(self.angles), np.mean(self.pers_lengths)],
-                    "Minimum": [np.min(self.arc_lengths), np.min(self.angles), np.min(self.pers_lengths)],
-                    "Maximum": [np.max(self.arc_lengths), np.max(self.angles), np.max(self.pers_lengths)],
-                    "SD": [np.std(self.arc_lengths), np.std(self.angles), np.std(self.pers_lengths)],
-                    "n": [len(self.arc_lengths), len(self.angles), len(self.pers_lengths)],
+                    "Mean": [np.mean(self.arc_lengths), np.mean(self.angles), np.mean(self.pers_lengths), np.mean(self.len_coef)],
+                    "Median": [np.median(self.arc_lengths), np.median(self.angles), np.median(self.pers_lengths), np.median(self.len_coef)],
+                    "Minimum": [np.min(self.arc_lengths), np.min(self.angles), np.min(self.pers_lengths), np.min(self.len_coef)],
+                    "Maximum": [np.max(self.arc_lengths), np.max(self.angles), np.max(self.pers_lengths), np.max(self.len_coef)],
+                    "SD": [np.std(self.arc_lengths), np.std(self.angles), np.std(self.pers_lengths), np.std(self.len_coef)],
+                    "n": [len(self.arc_lengths), len(self.angles), len(self.pers_lengths), len(self.len_coef)],
                 }
         self.stats_df = pd.DataFrame.from_dict(
             self.stats,
@@ -858,14 +877,31 @@ class fiberL:
         ax_rose.set_thetamin(0)
         ax_rose.set_thetamax(180)
 
-        # Scatter plot
-        ax_scatter = fig.add_subplot(spec[1, 2])
-        ax_scatter.scatter(valid_angles,
-                        [l for a, l in zip(self.angles, self.arc_lengths) if not np.isnan(a)],
-                        alpha=0.7, color="seagreen")
-        ax_scatter.set_title("Angle vs. Fiber Length")
-        ax_scatter.set_xlabel("Angle (degrees)")
-        ax_scatter.set_ylabel("Arc Length")
+        # Filter for valid angles and corresponding length coefficients
+        valid_mask = ~np.isnan(self.angles) & ~np.isnan(self.len_coef)
+        angles_valid = np.array(self.angles)[valid_mask]
+        len_coef_valid = np.array(self.len_coef)[valid_mask]
+
+        # Create DataFrame for seaborn
+        df_density = pd.DataFrame({
+            "Angle": angles_valid,
+            "Length Coefficient": len_coef_valid
+        })
+
+        # KDE plot
+        ax_kde = fig.add_subplot(spec[1, 2])
+        kdeplot(
+            data=df_density,
+            x="Angle", y="Length Coefficient",
+            cmap="viridis",
+            fill=True,
+            thresh=0.02,
+            bw_adjust=0.7,
+            ax=ax_kde
+        )
+        ax_kde.set_title("KDE: Angle vs. Length Coefficient")
+        ax_kde.set_xlabel("Angle (degrees)")
+        ax_kde.set_ylabel("Persistence / Arc Length")
 
         avg_length = np.mean(self.arc_lengths) if self.arc_lengths else 0
         fig.suptitle(f"Average Fiber Length: {avg_length:.2f}", fontsize=16, y=1.02)
@@ -990,7 +1026,8 @@ class fiberL:
                 lines = ["FIBER LENGTH ANALYSIS REPORT", "-"*40, "📌 Parameter Settings:"]
                 lines += [f"{k}: {v}" for k, v in settings.items()]
                 lines += ["\n📊 Summary Statistics:"]
-                lines += [f"{k}: {['{:.2f}'.format(x) if x is not None else 'None' for x in v]}" for k, v in self.stats.items()]
+                lines += [f"{row['Metric']}: {row['Value']:.2f}" if row['Value'] is not None else f"{row['Metric']}: None"
+                        for _, row in self.stats_df.iterrows()]
 
                 ax2.axis("off")
                 ax2.text(0.01, 0.99, "\n".join(lines), fontsize=11, va="top")

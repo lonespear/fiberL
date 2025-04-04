@@ -89,7 +89,7 @@ if uploaded_file:
             pixel_distance = np.linalg.norm([x2 - x1, y2 - y1])
             st.write(f"🔴🔵 Points: A({x1:.1f}, {y1:.1f}) → B({x2:.1f}, {y2:.1f}) | Distance: `{pixel_distance:.2f}` pixels")
 
-        col_a, _,_,_,_,_ = st.columns(6)
+        col_a, col_b,_,_ = st.columns(4)
         with col_a:
             real_length = st.number_input(
                 f"Enter real-world length of this line (in {selected_unit})", min_value=0.0001
@@ -99,10 +99,12 @@ if uploaded_file:
                 pixels_per_unit = pixel_distance / real_length
                 st.session_state["pixels_per_unit"] = pixels_per_unit
                 st.session_state["unit_label"] = selected_unit
-                st.write(f"Pixel Conversion: {pixels_per_unit} {selected_unit}")
+                with col_b:
+                    st.write(f"Pixel Conversion: {pixels_per_unit} {selected_unit}")
 
         if len(st.session_state.points) == 2 and st.button("🔁 Reset Measurement"):
             st.session_state.points = []
+            st.session_state['pixels_per_unit'] = None
 
     # --- CROPPING ---
     if crop_toggle:
