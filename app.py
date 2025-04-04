@@ -50,6 +50,15 @@ if uploaded_file:
         st.info("⚠️ **Scale measurement disabled:** All fiber length measurements will be in pixels.")
     crop_toggle = st.toggle("Enable Cropping", value=True)
 
+    # Logic flags
+    skip_scale = not scale_toggle
+    skip_crop = not crop_toggle
+
+    # Fallback if scale is skipped
+    if skip_scale:
+        st.session_state["pixels_per_unit"] = 1.0
+        st.session_state["unit_label"] = "pixels"
+
     # Sidebar Reset button at the end
     if st.sidebar.button("🔄 Reset Entire Workflow"):
         for key in ['uploaded_file', 'cropped_img', 'points', 'pixels_per_unit', 'unit_label']:
@@ -116,7 +125,8 @@ if uploaded_file:
             st.session_state.cropped_img = cropped_img
             st.success("Crop Confirmed!")
             st.rerun()
-    else:
+    elif skip_crop:
+        st.info("✂️ **Cropping skipped:** Full image will be used.")
         cropped_img = np.array(pil_original)
 
     # --- PREPROCESSING + ANALYSIS ---
@@ -142,6 +152,7 @@ if uploaded_file:
         st.info("ℹ️ **Scale measurement and cropping skipped:** Proceeding directly to preprocessing.")
 
 
+if uploaded_file and (crop_toggle or skip_crop):
     st.subheader("🔍 Skeletonization Preview")
     def create_analyzer(image):
         return fiberL(
@@ -171,9 +182,11 @@ if uploaded_file:
         st.image(analyzer.sk_image * 255, caption="Skeletonized Image", use_container_width=True, clamp=True)
 
 if st.session_state.get('uploaded_file') is not None:
+    if skip_scale and skip_crop:
+        st.warning("⚠️ You’ve disabled both scale and cropping. Default pixel units will be used on the **entire image**.")
     if st.button("🚀 Run Fiber Analysis"):
-        if scale_toggle and st.session_state['pixels_per_unit'] is None:
-            st.error("⚠️ You must complete scale measurement first.")
+        if scale_toggle and st.session_state.get('pixels_per_unit') is None:
+            st.error("⚠️ Scale measurement is enabled but not completed. Please click two points on the scale bar.")
         else:
             with st.spinner("Processing image... This may take a moment..."):
                 analyzer.find_length()

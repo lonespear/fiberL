@@ -642,7 +642,7 @@ class fiberL:
 
         uf = UnionFind()
         # branch_connections[br_index] is a list of pairs like (edgeA, edgeB)
-        for pair_list in self.branch_connections.values():
+        for pair_list in stqdm(self.branch_connections.values(), desc="  🔗 Merging Pairs", total=len(self.branch_connections.values())):
             for (edge1, edge2) in pair_list:
                 # Union the two integer indices
                 uf.union(edge1, edge2)
@@ -655,7 +655,7 @@ class fiberL:
             grouped_edges[root].append(edge)
 
         new_edge_objects = []
-        for group_edges in grouped_edges.values():
+        for group_edges in stqdm(grouped_edges.values(), desc = "Grouping Edges and ironing out points...", total=len(grouped_edges.values())):
             concatenated = group_edges[0]
             for next_edge in group_edges[1:]:
                 # Check orientation before concatenating
@@ -687,7 +687,7 @@ class fiberL:
 
         # Map each tip to its edge and endpoint (start/end)
         tip_to_edge = []
-        for edge_idx, edge in enumerate(self.edges):
+        for edge_idx, edge in stqdm(enumerate(self.edges), desc="Mapping tips to edges", total=len(self.edges)):
             if len(edge) < 5:
                 continue
             start_tip = edge[0, 0]
