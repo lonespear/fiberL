@@ -104,18 +104,18 @@ if uploaded_file:
         if len(st.session_state.points) == 2 and st.button("🔁 Reset Measurement"):
             st.session_state.points = []
 
-        # --- CROPPING ---
-        if crop_toggle:
-            st.subheader("🖼️ Crop Region of Interest")
-            rect = st_cropper(pil_original, realtime_update=True, box_color='#FF4B4B', aspect_ratio=None)
-            cropped_img = np.array(rect)
+    # --- CROPPING ---
+    if crop_toggle:
+        st.subheader("🖼️ Crop Region of Interest")
+        rect = st_cropper(pil_original, realtime_update=True, box_color='#FF4B4B', aspect_ratio=None)
+        cropped_img = np.array(rect)
 
-            if st.button("📸 Confirm Crop"):
-                st.session_state.cropped_img = cropped_img
-                st.success("Crop Confirmed!")
-                st.rerun()
-        else:
-            cropped_img = np.array(pil_original)
+        if st.button("📸 Confirm Crop"):
+            st.session_state.cropped_img = cropped_img
+            st.success("Crop Confirmed!")
+            st.rerun()
+    else:
+        cropped_img = np.array(pil_original)
 
     # --- PREPROCESSING + ANALYSIS ---
     st.sidebar.header("⚙️ Preprocessing Parameters")
