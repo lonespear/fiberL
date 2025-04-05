@@ -110,7 +110,7 @@ if uploaded_file:
                 st.session_state["unit_label"] = selected_unit
                 if real_length > 0.5:            
                     with col_b:
-                        st.write(f"Pixel Conversion: {pixels_per_unit} pixels / {selected_unit}")
+                        st.write(f"Pixel Conversion: {round(pixels_per_unit,2)} pixels / {selected_unit}")
 
         if len(st.session_state.points) == 2 and st.button("🔁 Reset Measurement"):
             st.session_state.points = []
