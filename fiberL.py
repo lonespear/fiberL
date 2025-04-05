@@ -819,7 +819,7 @@ class fiberL:
         self.stats_df = pd.DataFrame.from_dict(
             self.stats,
             orient="index",
-            columns=["Fiber Length", "Direction", "Persistent Length"]
+            columns=["Fiber Length", "Direction", "Persistent Length", "Lambda (Persistent/Actual)"]
         ).reset_index().rename(columns={"index": "Statistic"})
 
         norm = Normalize(vmin=min(self.arc_lengths), vmax=max(self.arc_lengths))
