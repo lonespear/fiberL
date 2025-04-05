@@ -691,10 +691,10 @@ class fiberL:
         edge_meta = []
         for edge_idx, edge in stqdm(enumerate(self.edges), desc="Finding edge start and end points...", total=len(self.edges)):
             if len(edge) >= 5:
-                start = edge[0, 0]
-                end = edge[-1, 0]
-                start_points.append(start)
-                end_points.append(end)
+                tip_start = edge[0, 0]
+                tip_end = edge[-1, 0]
+                start_points.append(tip_start)
+                end_points.append(tip_end)
                 edge_meta.append((edge_idx, 'start'))
                 edge_meta.append((edge_idx, 'end'))
 
