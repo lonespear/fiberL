@@ -490,7 +490,7 @@ class fiberL:
         self.branch_pts_img = np.zeros(skel_img.shape, dtype=np.uint8)
 
         print("  🧠 Applying kernels...")
-        for k in stqdm(self.kernels, desc="  ⏳ Hit-or-Miss Kernels"):
+        for k in stqdm(self.kernels, desc="  ⏳ Hit-or-Miss Kernels", total=len(self.kernels)):
             hit_miss = cv2.morphologyEx(skel_img, cv2.MORPH_HITMISS, k, borderType=cv2.BORDER_CONSTANT, borderValue=0)
             self.branch_pts_img = cv2.bitwise_or(self.branch_pts_img, hit_miss)
 
@@ -685,72 +685,96 @@ class fiberL:
             print("  ⚠️ Not enough tips to process.")
             return
 
-        # Map each tip to its edge and endpoint (start/end)
-        tip_to_edge = []
-        for edge_idx, edge in stqdm(enumerate(self.edges), desc="Mapping tips to edges", total=len(self.edges)):
-            if len(edge) < 5:
-                continue
-            start_tip = edge[0, 0]
-            end_tip = edge[-1, 0]
-            for tip in tip_coords:
-                if np.linalg.norm(tip - start_tip) < 2:
-                    tip_to_edge.append((tuple(tip), edge_idx, 'start'))
-                elif np.linalg.norm(tip - end_tip) < 2:
-                    tip_to_edge.append((tuple(tip), edge_idx, 'end'))
+        # Build edge tips array
+        start_points = []
+        end_points = []
+        edge_meta = []
+        for edge_idx, edge in stqdm(enumerate(self.edges), desc="Finding edge start and end points...", total=len(self.edges)):
+            if len(edge) >= 5:
+                start = edge[0, 0]
+                end = edge[-1, 0]
+                start_points.append(start)
+                end_points.append(end)
+                edge_meta.append((edge_idx, 'start'))
+                edge_meta.append((edge_idx, 'end'))
 
-        # Build KDTree and prepare merge bookkeeping
+        tip_endpoints = np.vstack([start_points, end_points])
+        tree = KDTree(tip_endpoints)
+
+        dists, indices = tree.query(tip_coords, distance_upper_bound=2.0)
+
+        tip_to_edge = []
+        for i, (dist, idx) in stqdm(enumerate(zip(dists, indices)), desc="Associating tip points to edge indices",
+                                    total=len(dists)):
+            if np.isinf(dist):
+                continue
+            edge_idx, pos = edge_meta[idx]
+            tip_to_edge.append((tuple(tip_coords[i]), edge_idx, pos))
+
         tip_points = np.array([tp[0] for tp in tip_to_edge])
-        # 🛡️ Add this safety check:
         if tip_points.ndim != 2 or tip_points.shape[0] < 2:
             print("⚠️ Not enough tip points to build KDTree.")
             return
+
         tree = KDTree(tip_points)
         used = set()
         paired_edges = set()
         merged_edges = []
 
+        # Precompute orientation and curvature
+        orientations = {}
+        curvatures = {}
+        for idx, edge in stqdm(enumerate(self.edges), desc="Calculating local edge attitude and curvature...",
+                               total=len(self.edges)):
+            if len(edge) >= 2:
+                orientations[idx] = PCA(n_components=1).fit(edge.reshape(-1, 2)).components_[0]
+                curvatures[idx] = pca_curvature_score(edge[:, 0])
+
         for i, (tip1, edge1, pos1) in stqdm(enumerate(tip_to_edge), total=len(tip_to_edge), desc="Mending Fibers on Tip Logic"):
             if i in used:
                 continue
 
-            dist, j = tree.query(tip1, k=2)  # skip self
+            dist, j = tree.query(tip1, k=2)
             if len(dist) < 2 or dist[1] > self.tip_distance_thresh:
                 continue
 
-            tip2, edge2, pos2 = tip_to_edge[j[1]]
+            _, edge2, pos2 = tip_to_edge[j[1]]
             if j[1] in used or edge1 == edge2:
                 continue
 
+            # Check orientation + curvature thresholds
+            if edge1 not in orientations or edge2 not in orientations:
+                continue
+            score1 = curvatures[edge1]
+            score2 = curvatures[edge2]
+            if score1 <= self.curvature_thresh or score2 <= self.curvature_thresh:
+                continue
+            cos_sim = np.dot(orientations[edge1], orientations[edge2])
+            if cos_sim <= self.cos_thresh:
+                continue
+
+            # Fetch and orient edges properly
             e1 = self.edges[edge1]
             e2 = self.edges[edge2]
+            seg1 = e1[::-1] if pos1 == 'start' else e1
+            seg2 = e2 if pos2 == 'start' else e2[::-1]
+            combined = np.vstack((seg1, seg2))
 
-            # PCA orientation vectors for directionality
-            vec1 = PCA(n_components=1).fit(e1.reshape(-1, 2)).components_[0]
-            vec2 = PCA(n_components=1).fit(e2.reshape(-1, 2)).components_[0]
-            cos_sim = np.dot(vec1, vec2)
+            merged_edges.append(combined)
+            used.add(i)
+            used.add(j[1])
+            paired_edges.add(edge1)
+            paired_edges.add(edge2)
 
-            # Compute curvature scores
-            score1 = pca_curvature_score(e1[:, 0])
-            score2 = pca_curvature_score(e2[:, 0])
-
-            if cos_sim > self.cos_thresh and score1 > self.curvature_thresh and score2 > self.curvature_thresh:
-                # Prepare to merge
-                seg1 = e1[::-1] if pos1 == 'start' else e1
-                seg2 = e2 if pos2 == 'start' else e2[::-1]
-                combined = np.vstack((seg1, seg2))
-                merged_edges.append(combined)
-                used.add(i)
-                used.add(j[1])
-                paired_edges.add(edge1)
-                paired_edges.add(edge2)
-
-        # Append all edges that weren't merged
+        # Append unmerged edges
         for edge_idx in range(len(self.edges)):
             if edge_idx not in paired_edges:
                 merged_edges.append(self.edges[edge_idx])
 
-        self.edges = [mst_sort(edge).reshape(-1,1,2) if edge.shape[0] >= 2 else edge.reshape(-1,1,2)
-                      for edge in stqdm(merged_edges, total=len(merged_edges), desc="Sorting final list of edges...")]
+        self.edges = [
+            mst_sort(edge).reshape(-1, 1, 2) if edge.shape[0] >= 2 else edge.reshape(-1, 1, 2)
+            for edge in stqdm(merged_edges, total=len(merged_edges), desc="Sorting final list of edges...")
+        ]
         print(f"✅ Tip-to-tip merging done in {time.time() - start:.2f}s — final edge count: {len(self.edges)}")
 
     def viz_and_sum(self, thickness=2, mode="rand", text=False):
