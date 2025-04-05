@@ -902,9 +902,8 @@ class fiberL:
         ax_rose.set_thetamax(180)
 
         # Filter for valid angles and corresponding length coefficients
-        valid_mask = ~np.isnan(self.angles) & ~np.isnan(self.len_coef)
-        angles_valid = np.array(self.angles)[valid_mask]
-        len_coef_valid = np.array(self.len_coef)[valid_mask]
+        angles_valid = np.array(self.angles)[valid]
+        len_coef_valid = self.len_coef
 
         # Create DataFrame for seaborn
         df_density = pd.DataFrame({
