@@ -1000,7 +1000,10 @@ class fiberL:
 
         # Filter for valid angles and corresponding length coefficients
         angles_valid = np.array(self.angles)[valid]
-        log_len_coef_valid = np.array(self.log_len_coef)[valid]
+        if len(self.log_len_coef) == len(valid):
+            log_len_coef_valid = self.log_len_coef[valid]
+        else:
+            log_len_coef_valid = self.log_len_coef  # already filtered
 
         # Create DataFrame for seaborn
         df_density = pd.DataFrame({
