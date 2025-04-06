@@ -153,57 +153,64 @@ if uploaded_file:
     cos_thresh = st.sidebar.slider("Tip Merging Cosine Threshold", 0.0, 1.0, 0.85)
     curvature_thresh = st.sidebar.slider("Curvature Similarity Threshold", 0.0, 1.0, 0.85)
 
-if uploaded_file and ((crop_toggle and crop) or skip_crop):
-    st.subheader("🔍 Skeletonization Preview")
-    def create_analyzer(image):
-        return fiberL(
-            image=image.copy(),
-            niter=niter,
-            kappa=kappa,
-            gamma=gamma,
-            thresh_1=thresh_1,
-            g_blur=g_blur,
-            thresh_2=thresh_2,
-            ksize=ksize,
-            min_prune=min_prune,
-            max_node_dist=max_node_dist,
-            cos_thresh=cos_thresh,
-            curvature_thresh=curvature_thresh,
-            pixels_per_unit=st.session_state.get("pixels_per_unit", 1.0)
-        )
+if uploaded_file:
+    # If cropping was done or disabled, define the image to analyze
+    image_to_process = None
+    if crop_toggle and st.session_state.get('cropped_img') is not None:
+        image_to_process = st.session_state['cropped_img']
+    elif skip_crop:
+        image_to_process = np.array(pil_original)
+        st.session_state['cropped_img'] = image_to_process  # Save for consistency
+    else:
+        image_to_process = None
 
-    # Usage in your app for preview:
-    analyzer = create_analyzer(cropped_img)
-    analyzer.preproc()
+    if image_to_process is not None:
+        st.subheader("🔍 Skeletonization Preview")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        st.image(cropped_img, caption="Cropped Original Image", use_container_width=True)
-    with col2:
-        st.image(255 - analyzer.sk_image * 255, caption="Skeletonized Image", use_container_width=True, clamp=True)
+        def create_analyzer(image):
+            return fiberL(
+                image=image.copy(),
+                niter=niter,
+                kappa=kappa,
+                gamma=gamma,
+                thresh_1=thresh_1,
+                g_blur=g_blur,
+                thresh_2=thresh_2,
+                ksize=ksize,
+                min_prune=min_prune,
+                max_node_dist=max_node_dist,
+                cos_thresh=cos_thresh,
+                curvature_thresh=curvature_thresh,
+                pixels_per_unit=st.session_state.get("pixels_per_unit", 1.0)
+            )
 
-if st.session_state.get('uploaded_file') is not None:
-    if skip_scale and skip_crop:
-        st.warning("⚠️ You’ve disabled both scale and cropping. Default pixel units will be used on the **entire image**.")
-    if st.button("🚀 Run Fiber Analysis"):
-        if scale_toggle and st.session_state.get('pixels_per_unit') is None:
-            st.error("⚠️ Scale measurement is enabled but not completed. Please click two points on the scale bar.")
-        else:
-            with st.spinner("Processing image... This may take a moment..."):
-                analyzer.branch()
-                analyzer.intersection_associate()
-                analyzer.edge_connect()
-                analyzer.merge_edges()
-                # analyzer.tip_association() fix later this takes too long simplified or merge takes forever
-                analyzer.viz_and_sum()
-                st.success("✅ Analysis Complete!")
+        analyzer = create_analyzer(image_to_process)
+        analyzer.preproc()
 
-                st.subheader("📊 Visual Summary")
-                st.pyplot(analyzer.fig, use_container_width=True)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.image(image_to_process, caption="Input Image", use_container_width=True)
+        with col2:
+            st.image(255 - analyzer.sk_image * 255, caption="Skeletonized Image", use_container_width=True, clamp=True)
 
-                st.subheader("📊 Summary Statistics")
-                st.dataframe(analyzer.stats_df.style.format({"Value": "{:.2f}"}))
+        if st.button("🚀 Run Fiber Analysis"):
+            if scale_toggle and st.session_state.get('pixels_per_unit') is None:
+                st.error("⚠️ Scale measurement is enabled but not completed. Please click two points on the scale bar.")
+            else:
+                with st.spinner("Processing image... This may take a moment..."):
+                    analyzer.branch()
+                    analyzer.intersection_associate()
+                    analyzer.edge_connect()
+                    analyzer.merge_edges()
+                    analyzer.viz_and_sum()
+                    st.success("✅ Analysis Complete!")
 
-                with st.expander("📤 Export Results"):
-                    analyzer.export_results_streamlit()
-                    st.success("Results exported to fiberL_output folder!")
+                    st.subheader("📊 Visual Summary")
+                    st.pyplot(analyzer.fig, use_container_width=True)
+
+                    st.subheader("📊 Summary Statistics")
+                    st.dataframe(analyzer.stats_df.style.format({"Value": "{:.2f}"}))
+
+                    with st.expander("📤 Export Results"):
+                        analyzer.export_results_streamlit()
+                        st.success("Results exported to fiberL_output folder!")
