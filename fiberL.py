@@ -806,20 +806,20 @@ class fiberL:
         valid_arc_lengths = np.array(self.arc_lengths)[valid]
 
         # Compute the length coefficient (persistence / arc length) for valid cases
-        self.len_coef = self.pers_lengths / valid_arc_lengths
+        self.log_len_coef = np.log(self.pers_lengths) / valid_arc_lengths
 
         self.stats = {
-                    "Mean": [np.mean(self.arc_lengths), np.mean(self.angles), np.mean(self.pers_lengths), np.mean(self.len_coef)],
-                    "Median": [np.median(self.arc_lengths), np.median(self.angles), np.median(self.pers_lengths), np.median(self.len_coef)],
-                    "Minimum": [np.min(self.arc_lengths), np.min(self.angles), np.min(self.pers_lengths), np.min(self.len_coef)],
-                    "Maximum": [np.max(self.arc_lengths), np.max(self.angles), np.max(self.pers_lengths), np.max(self.len_coef)],
-                    "SD": [np.std(self.arc_lengths), np.std(self.angles), np.std(self.pers_lengths), np.std(self.len_coef)],
-                    "n": [len(self.arc_lengths), len(self.angles), len(self.pers_lengths), len(self.len_coef)],
+                    "Mean": [np.mean(self.arc_lengths), np.mean(self.angles), np.mean(self.pers_lengths), np.mean(self.log_len_coef)],
+                    "Median": [np.median(self.arc_lengths), np.median(self.angles), np.median(self.pers_lengths), np.median(self.log_len_coef)],
+                    "Minimum": [np.min(self.arc_lengths), np.min(self.angles), np.min(self.pers_lengths), np.min(self.log_len_coef)],
+                    "Maximum": [np.max(self.arc_lengths), np.max(self.angles), np.max(self.pers_lengths), np.max(self.log_len_coef)],
+                    "SD": [np.std(self.arc_lengths), np.std(self.angles), np.std(self.pers_lengths), np.std(self.log_len_coef)],
+                    "n": [len(self.arc_lengths), len(self.angles), len(self.pers_lengths), len(self.log_len_coef)],
                 }
         self.stats_df = pd.DataFrame.from_dict(
             self.stats,
             orient="index",
-            columns=["Fiber Length", "Direction", "Persistent Length", "Lambda (Persistent/Actual)"]
+            columns=["Fiber Length", "Direction", "Persistent Length", "Lambda (Log(Persistent)/Actual)"]
         ).reset_index().rename(columns={"index": "Statistic"})
 
         norm = Normalize(vmin=min(self.arc_lengths), vmax=max(self.arc_lengths))
