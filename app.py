@@ -190,7 +190,12 @@ if st.session_state.get('uploaded_file') is not None:
             st.error("⚠️ Scale measurement is enabled but not completed. Please click two points on the scale bar.")
         else:
             with st.spinner("Processing image... This may take a moment..."):
-                analyzer.find_length()
+                analyzer.branch()
+                analyzer.intersection_associate()
+                analyzer.edge_connect()
+                analyzer.merge_edges()
+                # analyzer.tip_association() fix later this takes too long simplified or merge takes forever
+                analyzer.viz_and_sum()
                 st.success("✅ Analysis Complete!")
 
                 st.subheader("📊 Visual Summary")
