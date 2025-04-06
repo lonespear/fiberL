@@ -137,6 +137,7 @@ if uploaded_file:
     # --- PREPROCESSING + ANALYSIS ---
     st.sidebar.header("⚙️ Preprocessing Parameters")
     niter = st.sidebar.slider("Anisotropic Diffusion Iterations", 1, 100, 50)
+    sigma = st.sidebar.slider("Coherence Diffusion Noise", 1, 10, 2)
     kappa = st.sidebar.slider("Kappa (Conduction Coefficient)", 1, 100, 50)
     gamma = st.sidebar.slider("Gamma (Diffusion Rate)", 0.01, 0.25, 0.2)
     thresh_1 = st.sidebar.slider("Initial Binary Threshold", 0, 255, 126)
@@ -173,6 +174,7 @@ if uploaded_file:
                 niter=niter,
                 kappa=kappa,
                 gamma=gamma,
+                sigma=sigma,
                 thresh_1=thresh_1,
                 g_blur=g_blur,
                 thresh_2=thresh_2,

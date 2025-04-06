@@ -105,15 +105,15 @@ def log_gabor_filter(image, orientations, sigma=2.0):
 
     return pc_maps
 
-def coherence_filter(img_gray, orientations=None, n_iter=10):
+def coherence_filter(img_gray, orientations=None, gamma=0.2, sigma=2, n_iter=10):
     if orientations is None:
-        orientations = np.deg2rad([0, 45, 90, 135])
+        orientations = np.deg2rad([0, 15, 30, 45, 60, 90, 105, 120, 135, 150, 160])
 
     img_gray = img_gray.astype(np.float32) / 255.0
-    pc_maps = log_gabor_filter(img_gray, orientations)
+    pc_maps = log_gabor_filter(img_gray, orientations, sigma=sigma)
     T = build_pct_tensor(pc_maps, orientations)
     D = compute_diffusion_tensor(T)
-    result = apply_diffusion(img_gray * 255, D, n_iter=n_iter)
+    result = apply_diffusion(img_gray * 255, D, gamma=gamma, n_iter=n_iter)
 
     return result
 
@@ -500,13 +500,14 @@ def mst_sort(points):
     return points[path]
 
 class fiberL:
-    def __init__(self, image, niter=50, kappa=50, gamma=0.2, option = 3, thresh_1 = 126, 
+    def __init__(self, image, niter=50, kappa=50, gamma=0.2, sigma=2, option = 3, thresh_1 = 126, 
                  g_blur = 9, thresh_2 = 15, ksize = 5, min_prune = 5, max_node_dist=15, 
                  tip_distance_thresh = 25, cos_thresh = 0.85, curvature_thresh = 0.85, pixels_per_unit=1.0):
         self.image = image
         self.niter = niter
         self.kappa = kappa
         self.gamma=gamma
+        self.sigma=sigma
         self.option=option
         self.thresh_1 = thresh_1
         self.thresh_2 = thresh_2
@@ -530,8 +531,8 @@ class fiberL:
                 gray_image = self.image.copy()
 
             print("  ⏳ Running anisotropic diffusion...")
-            # self.diff_img = coherence_filter(gray_image, n_iter=20)
-            self.diff_img = anisotropic_diffusion(gray_image, niter=self.niter, kappa=self.kappa, gamma=self.gamma, option=self.option)
+            self.diff_img = coherence_filter(gray_image, gamma=self.gamma, self.sigma=2, n_iter=self.niter)
+            # self.diff_img = anisotropic_diffusion(gray_image, niter=self.niter, kappa=self.kappa, gamma=self.gamma, option=self.option)
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (self.ksize, self.ksize))  # Try (5, 5) or adjust size
             self.tophat = cv2.morphologyEx(self.diff_img, cv2.MORPH_TOPHAT, kernel)
             self.binary_thresh = cv2.threshold(self.tophat, self.thresh_1, 255, cv2.THRESH_BINARY)[1].astype('uint8')
