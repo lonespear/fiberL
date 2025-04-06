@@ -120,11 +120,9 @@ if uploaded_file:
     if crop_toggle:
         st.subheader("🖼️ Crop Region of Interest")
         rect = st_cropper(pil_resized, return_type='box', realtime_update=True, box_color='#FF4B4B', aspect_ratio=None)
-        st.write("DEBUG: rect object:", rect)
-        st.write("DEBUG: rect type:", type(rect))
         # Convert cropped area back to original resolution
-        x = int(rect["x"] * scale_ratio)
-        y = int(rect["y"] * scale_ratio)
+        x = int(rect["left"] * scale_ratio)
+        y = int(rect["top"] * scale_ratio)
         w = int(rect["width"] * scale_ratio)
         h = int(rect["height"] * scale_ratio)
 
