@@ -119,7 +119,7 @@ if uploaded_file:
     # --- CROPPING ---
     if crop_toggle:
         st.subheader("🖼️ Crop Region of Interest")
-        rect = st_cropper(pil_resized, realtime_update=True, box_color='#FF4B4B', aspect_ratio=None)
+        rect = st_cropper(pil_resized, return_type='box', realtime_update=True, box_color='#FF4B4B', aspect_ratio=None)
 
         # Convert cropped area back to original resolution
         x = int(rect["x"] * scale_ratio)
