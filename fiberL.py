@@ -531,7 +531,7 @@ class fiberL:
                 gray_image = self.image.copy()
 
             print("  ⏳ Running anisotropic diffusion...")
-            self.diff_img = coherence_filter(gray_image, gamma=self.gamma, self.sigma=2, n_iter=self.niter)
+            self.diff_img = coherence_filter(gray_image, gamma=self.gamma, sigma=self.sigma, n_iter=self.niter)
             # self.diff_img = anisotropic_diffusion(gray_image, niter=self.niter, kappa=self.kappa, gamma=self.gamma, option=self.option)
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (self.ksize, self.ksize))  # Try (5, 5) or adjust size
             self.tophat = cv2.morphologyEx(self.diff_img, cv2.MORPH_TOPHAT, kernel)
