@@ -138,20 +138,16 @@ if uploaded_file:
     thresh_1 = st.sidebar.slider("Initial Binary Threshold", 0, 255, 126)
     g_blur = st.sidebar.slider("Gaussian Blur Kernel Size", 1, 31, 9, step=2)
     thresh_2 = st.sidebar.slider("Final Binary Threshold", 0, 255, 15)
+    ksize = st.sidebar.slider("Kernel Size for Branch Point Dilation", 1, 15, 5)
 
     st.sidebar.markdown("---")
     st.sidebar.subheader("Algorithm Parameters")
 
-    ksize = st.sidebar.slider("Kernel Size for Branch Point Dilation", 1, 15, 5)
     min_prune = st.sidebar.slider("Minimum Edge Prune Length", 1, 50, 5)
     max_node_dist = st.sidebar.slider("Branch Merge Distance Threshold", 1, 50, 15)
     tip_distance_thresh = st.sidebar.slider("Maximum Tip Distance Threshold", 0, 50, 25)
     cos_thresh = st.sidebar.slider("Tip Merging Cosine Threshold", 0.0, 1.0, 0.85)
     curvature_thresh = st.sidebar.slider("Curvature Similarity Threshold", 0.0, 1.0, 0.85)
-
-    if not scale_toggle and not crop_toggle:
-        st.info("ℹ️ **Scale measurement and cropping skipped:** Proceeding directly to preprocessing.")
-
 
 if uploaded_file and (crop_toggle or skip_crop):
     st.subheader("🔍 Skeletonization Preview")

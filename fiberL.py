@@ -21,6 +21,101 @@ from scipy.optimize import curve_fit
 from skimage import morphology
 import streamlit as st
 from stqdm import stqdm
+from scipy.ndimage import convolve, gaussian_filter
+from numpy.linalg import eigh
+
+# Helper to compute orientation unit vectors
+def orientation_vectors(orientations):
+    return [(np.cos(o), np.sin(o)) for o in orientations]
+
+def build_pct_tensor(pc_maps, orientations, alpha=0.5):
+    h, w = pc_maps[0].shape
+    T = np.zeros((h, w, 2, 2), dtype=np.float32)
+
+    vectors = orientation_vectors(orientations)
+    I = np.eye(2)
+
+    for pc, (nx, ny) in zip(pc_maps, vectors):
+        n = np.array([[nx], [ny]])
+        outer = n @ n.T - alpha * I
+        for i in range(2):
+            for j in range(2):
+                T[..., i, j] += pc * outer[i, j]
+
+    return T
+
+def compute_diffusion_tensor(T, c1=0.01, c2=0.001):
+    h, w = T.shape[:2]
+    D = np.zeros_like(T)
+
+    for i in range(h):
+        for j in range(w):
+            eigvals, eigvecs = eigh(T[i, j])
+            idx = eigvals.argsort()[::-1]  # descending
+            eigvals = eigvals[idx]
+            eigvecs = eigvecs[:, idx]
+
+            Vpct = eigvals[0] - eigvals[1]
+            k1 = c1
+            k2 = c1 + (1 - c1) * np.exp(-c2 / (Vpct + 1e-12))
+            L = np.diag([k2, k1])
+
+            D[i, j] = eigvecs @ L @ eigvecs.T
+
+    return D
+
+def apply_diffusion(image, D, gamma=0.2, n_iter=10):
+    image = image.astype(np.float32) / 255.0
+    u = image.copy()
+    h, w = image.shape
+
+    # Sobel kernels for gradient
+    kx = np.array([[1, 0, -1], [2, 0, -2], [1, 0, -1]]) / 8
+    ky = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]]) / 8
+
+    for _ in range(n_iter):
+        ux = convolve(u, kx)
+        uy = convolve(u, ky)
+
+        div = np.zeros_like(u)
+        for i in range(h):
+            for j in range(w):
+                grad = np.array([ux[i, j], uy[i, j]])
+                flux = D[i, j] @ grad
+                div[i, j] = flux[0] * ux[i, j] + flux[1] * uy[i, j]
+
+        u += gamma * div
+        u = np.clip(u, 0, 1)
+
+    return (u * 255).astype(np.uint8)
+
+def log_gabor_filter(image, orientations, sigma=2.0):
+    pc_maps = []
+    ksize = max(3, int(6 * sigma) | 1)
+
+    for theta in orientations:
+        dx = cv2.getGaussianKernel(ksize=ksize, sigma=sigma) * np.cos(theta)
+        dy = cv2.getGaussianKernel(ksize=ksize, sigma=sigma) * np.sin(theta)
+
+        gx = convolve(image, dx.reshape(1, -1))
+        gy = convolve(image, dy.reshape(-1, 1))
+
+        pc = np.sqrt(gx**2 + gy**2)
+        pc_maps.append(pc / pc.max())
+
+    return pc_maps
+
+def coherence_filter(img_gray, orientations=None, n_iter=10):
+    if orientations is None:
+        orientations = np.deg2rad([0, 45, 90, 135])
+
+    img_gray = img_gray.astype(np.float32) / 255.0
+    pc_maps = log_gabor_filter(img_gray, orientations)
+    T = build_pct_tensor(pc_maps, orientations)
+    D = compute_diffusion_tensor(T)
+    result = apply_diffusion(img_gray * 255, D, n_iter=n_iter)
+
+    return result
 
 def anisotropic_diffusion(img, niter=1, kappa=50, gamma=0.1, voxelspacing=None, option=1):
     r"""
@@ -435,17 +530,19 @@ class fiberL:
                 gray_image = self.image.copy()
 
             print("  ⏳ Running anisotropic diffusion...")
+            # self.diff_img = coherence_filter(gray_image, n_iter=20)
             self.diff_img = anisotropic_diffusion(gray_image, niter=self.niter, kappa=self.kappa, gamma=self.gamma, option=self.option)
-            self.binary_thresh = cv2.threshold(self.diff_img, self.thresh_1, 255, cv2.THRESH_BINARY)[1].astype('uint8')
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (self.ksize, self.ksize))  # Try (5, 5) or adjust size
+            self.tophat = cv2.morphologyEx(self.diff_img, cv2.MORPH_TOPHAT, kernel)
+            self.binary_thresh = cv2.threshold(self.tophat, self.thresh_1, 255, cv2.THRESH_BINARY)[1].astype('uint8')
             self.binary_canny = cv2.Canny((self.diff_img).astype(np.uint8), 20, 60)
             self.binary_image = cv2.bitwise_or(self.binary_thresh, self.binary_canny)
-            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))  # Try (5, 5) or adjust size
             # Close small gaps
             closed = cv2.morphologyEx(self.binary_image, cv2.MORPH_CLOSE, kernel)
             # Optional: dilate to strengthen weak lines
             closed = cv2.dilate(closed, kernel, iterations=1)
             # Optional: erode to reduce extra thickness
-            # closed = cv2.erode(closed, kernel, iterations=1)
+            closed = cv2.erode(closed, kernel, iterations=1)
             self.binary_image = closed  # update before skeletonization
             self.skel1 = skel_unique(self.binary_image)
             self.blurred_image = cv2.GaussianBlur(self.skel1, (self.g_blur, self.g_blur), 0)
