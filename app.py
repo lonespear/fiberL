@@ -53,6 +53,7 @@ if uploaded_file:
     # Logic flags
     skip_scale = not scale_toggle
     skip_crop = not crop_toggle
+    crop = False
 
     # Fallback if scale is skipped
     if skip_scale:
@@ -120,15 +121,15 @@ if uploaded_file:
     if crop_toggle:
         st.subheader("🖼️ Crop Region of Interest")
         rect = st_cropper(pil_resized, return_type='box', realtime_update=True, box_color='#FF4B4B', aspect_ratio=None)
-        # Convert cropped area back to original resolution
-        x = int(rect["left"] * scale_ratio)
-        y = int(rect["top"] * scale_ratio)
-        w = int(rect["width"] * scale_ratio)
-        h = int(rect["height"] * scale_ratio)
-
-        cropped_img = np.array(pil_original.crop((x, y, x + w, y + h)))
 
         if st.button("📸 Confirm Crop"):
+            crop=True
+            # Convert cropped area back to original resolution
+            x = int(rect["left"] * scale_ratio)
+            y = int(rect["top"] * scale_ratio)
+            w = int(rect["width"] * scale_ratio)
+            h = int(rect["height"] * scale_ratio)
+            cropped_img = np.array(pil_original.crop((x, y, x + w, y + h)))
             st.session_state.cropped_img = cropped_img
             st.success("Crop Confirmed!")
             st.rerun()
@@ -152,7 +153,7 @@ if uploaded_file:
     cos_thresh = st.sidebar.slider("Tip Merging Cosine Threshold", 0.0, 1.0, 0.85)
     curvature_thresh = st.sidebar.slider("Curvature Similarity Threshold", 0.0, 1.0, 0.85)
 
-if uploaded_file and (crop_toggle or skip_crop):
+if uploaded_file and ((crop_toggle and crop) or skip_crop):
     st.subheader("🔍 Skeletonization Preview")
     def create_analyzer(image):
         return fiberL(
