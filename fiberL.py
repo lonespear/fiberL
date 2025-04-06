@@ -1000,12 +1000,12 @@ class fiberL:
 
         # Filter for valid angles and corresponding length coefficients
         angles_valid = np.array(self.angles)[valid]
-        len_coef_valid = self.len_coef
+        log_len_coef_valid = np.array(self.log_len_coef)[valid]
 
         # Create DataFrame for seaborn
         df_density = pd.DataFrame({
             "Angle": angles_valid,
-            "Length Coefficient": len_coef_valid
+            "Length Coefficient": log_len_coef_valid
         })
 
         # KDE plot
