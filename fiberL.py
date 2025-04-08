@@ -536,7 +536,7 @@ class fiberL:
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (self.ksize, self.ksize))  # Try (5, 5) or adjust size
             self.tophat = cv2.morphologyEx(self.diff_img, cv2.MORPH_TOPHAT, kernel)
             self.binary_thresh = cv2.threshold(self.tophat, self.thresh_1, 255, cv2.THRESH_BINARY)[1].astype('uint8')
-            self.binary_canny = cv2.Canny((self.diff_img).astype(np.uint8), 20, 60)
+            self.binary_canny = cv2.Canny((self.tophat).astype(np.uint8), 20, 60)
             self.binary_image = cv2.bitwise_or(self.binary_thresh, self.binary_canny)
             # Close small gaps
             closed = cv2.morphologyEx(self.binary_image, cv2.MORPH_CLOSE, kernel)
