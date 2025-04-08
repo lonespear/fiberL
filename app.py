@@ -190,7 +190,7 @@ if uploaded_file:
 
         analyzer = create_analyzer(image_to_process)
         analyzer.preproc()
-
+        
         col1, col2 = st.columns(2)
         with col1:
             st.image(image_to_process, caption="Input Image", use_container_width=True)
