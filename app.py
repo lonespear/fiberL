@@ -62,7 +62,7 @@ if uploaded_file:
 
     # Sidebar Reset button at the end
     if st.sidebar.button("🔄 Reset Entire Workflow"):
-        for key in ['uploaded_file', 'cropped_img', 'points', 'pixels_per_unit', 'unit_label']:
+        for key in ['uploaded_file', 'cropped_img', 'points', 'pixels_per_unit', 'unit_label', 'crop_confirmed']:
             if key in st.session_state:
                 del st.session_state[key]
         st.rerun()
@@ -123,7 +123,9 @@ if uploaded_file:
         rect = st_cropper(pil_resized, return_type='box', realtime_update=True, box_color='#FF4B4B', aspect_ratio=None)
 
         if st.button("📸 Confirm Crop"):
-            crop=True
+            # Save crop flag in session state
+            st.session_state['crop_confirmed'] = True
+
             # Convert cropped area back to original resolution
             x = int(rect["left"] * scale_ratio)
             y = int(rect["top"] * scale_ratio)
@@ -157,7 +159,7 @@ if uploaded_file:
 if uploaded_file:
     # If cropping was done or disabled, define the image to analyze
     image_to_process = None
-    if crop_toggle and st.session_state.get('cropped_img') is not None:
+    if crop_toggle and st.session_state.get('crop_confirmed') and st.session_state.get('cropped_img') is not None:
         image_to_process = st.session_state['cropped_img']
     elif skip_crop:
         image_to_process = np.array(pil_original)
